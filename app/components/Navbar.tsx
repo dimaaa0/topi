@@ -1,4 +1,8 @@
+"use client"; // Убедитесь, что компонент клиентский, если используется в Server Components
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+export const instant = false;
 
 function Sparkle({
   className = "",
@@ -22,9 +26,11 @@ const active =
 const idle =
   "text-[#2E2A4F]/70 transition-colors hover:bg-[#F4F5FB] hover:text-[#2E2A4F]";
 
-export default function Header({ current }: { current: "home" | "profile" }) {
+export default function Header() {
+  const pathname = usePathname(); // Автоматически получаем текущий путь (например, "/" или "/profile")
+
   return (
-    <header className="flex mx-auto flex max-w-5xl  px-5 pt-5 sm:px-8 items-center justify-between">
+    <header className="mx-auto flex max-w-5xl items-center justify-between px-5 pt-5 sm:px-8">
       <Link href="/" className="flex items-center gap-1.5 rounded-full pr-3">
         <span className="text-4xl font-extrabold tracking-tight text-[#7B73D1]">
           Topi
@@ -38,15 +44,19 @@ export default function Header({ current }: { current: "home" | "profile" }) {
       >
         <Link
           href="/"
-          aria-current={current === "home" ? "page" : undefined}
-          className={`rounded-full px-4 py-2 text-sm font-bold ${current === "home" ? active : idle}`}
+          aria-current={pathname === "/" ? "page" : undefined}
+          className={`rounded-full px-4 py-2 text-sm font-bold ${
+            pathname === "/" ? active : idle
+          }`}
         >
           Главная
         </Link>
         <Link
           href="/profile"
-          aria-current={current === "profile" ? "page" : undefined}
-          className={`rounded-full px-4 py-2 text-sm font-bold ${current === "profile" ? active : idle}`}
+          aria-current={pathname === "/profile" ? "page" : undefined}
+          className={`rounded-full px-4 py-2 text-sm font-bold ${
+            pathname === "/profile" ? active : idle
+          }`}
         >
           Профиль
         </Link>
