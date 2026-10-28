@@ -14,10 +14,10 @@ model User {
     email         String?   @unique
     emailVerified DateTime?
     image         String?
+    password      String?   // <-- Добавьте вот это поле, если его еще нет
     accounts      Account[]
     sessions      Session[]
     
-    // Свои поля для проекта Topi (например, прогресс или тесты)
     createdAt     DateTime  @default(now())
     updatedAt     DateTime  @updatedAt
 }

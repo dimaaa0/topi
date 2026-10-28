@@ -1,26 +1,53 @@
 import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@/lib/prisma"; // Импортируем созданный нами клиент
-import GitHub from "next-auth/providers/github";
+import { prisma } from "@/lib/prisma";
 import Google from "next-auth/providers/google";
-import Discord from "next-auth/providers/discord";
+import Credentials from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma), // <-- Подключаем адаптер базы данных
+  adapter: PrismaAdapter(prisma),
   trustHost: true,
+  session: { strategy: "jwt" }, // Рекомендуется при использовании Credentials
   providers: [
-    GitHub({
-      clientId: process.env.GITHUB_ID,
-      clientSecret: process.env.GITHUB_SECRET,
-    }),
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      allowDangerousEmailAccountLinking: true,
     }),
-    Discord({
-      clientId: process.env.DISCORD_CLIENT_ID,
-      clientSecret: process.env.DISCORD_CLIENT_SECRET,
-      issuer: "https://discord.com",
+    Credentials({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
+
+        // Ищем пользователя в базе Neon
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email as string },
+        });
+
+        // Если пользователя нет или у него не задан пароль
+        if (!user || !user.password) {
+          return null;
+        }
+
+        // Сверяем хэш пароля
+        const passwordsMatch = await bcrypt.compare(
+          credentials.password as string,
+          user.password,
+        );
+
+        if (passwordsMatch) {
+          return user;
+        }
+
+        return null;
+      },
     }),
   ],
 });
