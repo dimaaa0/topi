@@ -65,7 +65,7 @@ const Profile = async () => {
     .toUpperCase();
 
   return (
-    <div className="relative min-h-dvh overflow-hidden">
+    <div className="relative pb-6 overflow-hidden">
       {/* фон */}
       <div
         aria-hidden="true"
@@ -80,8 +80,8 @@ const Profile = async () => {
         className="pointer-events-none absolute -right-20 top-72 h-72 w-72 rounded-full bg-[#FFAB91]/20 blur-3xl"
       />
 
-      <div className="relative mx-auto flex min-h-dvh max-w-5xl flex-col px-5 pb-10 pt-5 sm:px-8">
-        <main className="flex flex-1 items-center justify-center py-10">
+      <div className="relative mx-auto flex  max-w-5xl flex-col px-5 pt-5 sm:px-8">
+        <main className="flex flex-1 items-center justify-center">
           <div className="relative w-full max-w-md">
             <div className="relative z-10 mx-auto -mb-10 h-36 w-36">
               <div
@@ -166,9 +166,7 @@ const Profile = async () => {
               ) : (
                 <>
                   <div className="text-center">
-                    <p className="mx-auto mt-2 max-w-xs font-semibold leading-relaxed text-[#2E2A4F]/60">
-                     
-                    </p>
+                    <p className="mx-auto mt-2 max-w-xs font-semibold leading-relaxed text-[#2E2A4F]/60"></p>
                   </div>
                   <RegistrationForm />
                   {/* <div className="mt-7 flex flex-col gap-3">

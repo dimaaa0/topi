@@ -220,7 +220,7 @@ export default async function Home() {
     .charAt(0)
     .toUpperCase();
   const raw = user?.name?.split(" ")[0] ?? "ученик";
-  const firstName = raw.charAt(0).toUpperCase() + raw.slice(1);
+  // const firstName = raw.charAt(0).toUpperCase() + raw.slice(1);
 
   return (
     <div className="relative min-h-dvh overflow-hidden">
@@ -291,7 +291,7 @@ export default async function Home() {
 
                 <div className="min-w-0">
                   <h1 className="truncate text-2xl font-extrabold leading-tight sm:text-4xl">
-                    Привет, {firstName}!
+                    Привет, {user.name}!
                   </h1>
                   <p className="mt-1 font-semibold  md:block text-white">
                     Выбирай раздел и продолжай готовиться к TOPIK&nbsp;II
