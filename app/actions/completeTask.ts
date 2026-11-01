@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 
-export async function completeWriting(Number: number, Task: string) {
+export async function completeTask(Number: number, Task: string) {
   const session = await auth();
   if (!session || !session.user?.id) throw new Error("Не авторизован");
 
