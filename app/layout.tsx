@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <body className={`${nunito.className} bg-[#F4F5FB] text-[#2E2A4F]`}>
-        <Navbar current="home" />
+        <Navbar  />
         <Suspense fallback={<div>Загрузка навигации...</div>}>
           {children}
         </Suspense>

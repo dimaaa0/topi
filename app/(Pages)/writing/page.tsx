@@ -37,7 +37,7 @@ export default async function WritingPage() {
 
   return (
     <WritingClientView
-      initialWriting={nextWriting}
+      initialWriting={nextWriting as any}
       completedCount={user?.completedWritingCount || 0}
       totalCount={totalWritings}
     />
