@@ -16,7 +16,11 @@ model User {
     image         String?
     password      String?   // <-- Добавьте вот это поле, если его еще нет
     accounts      Account[]
-    sessions      Session[]
+    sessions      Session[] 
+    role          String    @default("USER")
+
+    lastWritingNumber     Int       @default(0)
+    completedWritingCount Int       @default(0)
     
     createdAt     DateTime  @default(now())
     updatedAt     DateTime  @updatedAt
@@ -55,4 +59,14 @@ model VerificationToken {
     expires     DateTime
 
     @@unique([identifier, token])
+}
+
+model Writing {
+  id        String   @id @default(cuid())
+  number    Int      @default(autoincrement())
+  content   Json     
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Writing")
 }
