@@ -4,11 +4,24 @@ import { prisma } from "@/lib/prisma";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import { DefaultSession } from "next-auth";
+
+declare module "next-auth" {
+  interface User {
+    role?: string;
+  }
+  interface Session {
+    user: {
+      id: string;
+      role?: string;
+    } & DefaultSession["user"];
+  }
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   trustHost: true,
-  session: { strategy: "jwt" }, // Рекомендуется при использовании Credentials
+  session: { strategy: "jwt" }, // При JWT-стратегии данные сессии хранятся в токене
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -26,17 +39,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        // Ищем пользователя в базе Neon
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
         });
 
-        // Если пользователя нет или у него не задан пароль
         if (!user || !user.password) {
           return null;
         }
 
-        // Сверяем хэш пароля
         const passwordsMatch = await bcrypt.compare(
           credentials.password as string,
           user.password,
@@ -50,4 +60,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+
+  // 👇 СЮДА ВСТАВЛЯЕТСЯ БЛОК CALLBACKS
+  callbacks: {
+    // Срабатывает при входе: записываем id и role в сам токен
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.role = (user as any).role; // Подтягивает поле role из базы данных Neon
+      }
+      return token;
+    },
+    // Срабатывает при обращении к сессии: прокидываем поля из токена в session.user
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id as string;
+        session.user.role = token.role as string;
+      }
+      return session;
+    },
+  },
 });
