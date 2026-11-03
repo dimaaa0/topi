@@ -25,7 +25,6 @@ async function WritingContent() {
     );
   }
 
-  // 1. Получ аем данные пользователя (его текущий прогресс)
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { lastWritingNumber: true, completedWritingCount: true },

@@ -32,8 +32,6 @@ function isTopikTask(value: unknown): value is TopikTask {
   );
 }
 
-
-
 interface WritingClientViewProps {
   initialWriting: WritingData | null;
   completedCount: number;
@@ -87,7 +85,7 @@ export default function WritingClientView({
           <div className="text-sm text-purple-600 font-bold">
             Пройдено наборов: {completedCount} из {totalCount}
           </div>
-          <button onClick={resetWritingProgress} className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+          <button onClick={() => { resetWritingProgress(); setLoading(false); }} className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
             Сбросить прогресс
           </button>
         </div>
@@ -107,12 +105,14 @@ export default function WritingClientView({
     setAnswer1("");
     setAnswer2("");
     setIsAnswerRevealed(false);
+    setLoading(false)
   };
 
   // Эта функция теперь просто показывает ответы и блокирует инпуты
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsAnswerRevealed(true);
+    e.preventDefault()
+    setIsAnswerRevealed(true)
+    setLoading(false)
   };
 
   // А эта функция будет сохранять прогресс и переключать на следующий набор
@@ -120,6 +120,7 @@ export default function WritingClientView({
     setLoading(true);
     try {
       await completeTask(initialWriting.number, "Writing");
+      selectTask(51)
       // После успешного выполнения сервер сам обновит страницу (revalidatePath)
     } catch (err) {
       alert("Произошла ошибка при сохранении. Пожалуйста, попробуйте еще раз.");
@@ -260,25 +261,32 @@ export default function WritingClientView({
             // Кнопка для проверки ответов (работает и для 51, и для 52)
             <button
               type="submit"
-              disabled={loading || !answer1 || !answer2}
-              className="relative flex w-full items-center justify-center cursor-pointer rounded-2xl bg-[#FF8A80] py-3.5 font-extrabold text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:bg-[#FF9A91] disabled:opacity-50"
+              // ВОТ ЗДЕСЬ ВОЗВРАЩАЕМ ПРОВЕРКУ НА ПУСТЫЕ ПОЛЯ
+              disabled={loading}
+              className="relative flex w-full items-center justify-center cursor-pointer rounded-2xl bg-[#FF8A80] py-3.5 font-extrabold text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:bg-[#FF9A91] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Показать ответ
             </button>
           ) : activeTask === 51 ? (
-            // Кнопка перехода к 52 заданию (появляется после ответов на 51)
+            // Кнопка перехода к 52 заданию
             <button
               type="button"
-              onClick={() => selectTask(52)}
+              onClick={(e) => {
+                e.preventDefault(); // Защита от случайной отправки формы
+                selectTask(52);
+              }}
               className="relative flex w-full items-center justify-center cursor-pointer rounded-2xl bg-[#8C82D9] py-3.5 font-extrabold text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:bg-[#9B93E0]"
             >
               Перейти к 52 заданию
             </button>
           ) : (
-            // Кнопка завершения набора и сохранения в БД (появляется после ответов на 52)
+            // Кнопка завершения набора и сохранения в БД
             <button
               type="button"
-              onClick={handleNextSet}
+              onClick={(e) => {
+                e.preventDefault();
+                handleNextSet();
+              }}
               disabled={loading}
               className="relative flex w-full items-center justify-center cursor-pointer rounded-2xl bg-green-500 py-3.5 font-extrabold text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:bg-green-400 disabled:opacity-50"
             >
