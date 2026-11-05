@@ -1,7 +1,9 @@
-"use client";
+'use client';
 import { useState } from "react";
 import type { Writing } from "@prisma/client";
 import { completeTask } from "../actions/completeTask";
+import { resetWritingProgress } from "../actions/resetProgress";
+
 
 type TopikTask = {
   task_number: number;
@@ -20,8 +22,7 @@ type TopikTask = {
 type WritingData = Pick<Writing, "id" | "number" | "content">;
 
 function isTopikTask(value: unknown): value is TopikTask {
-  if (typeof value !== "object" || value === null || Array.isArray(value))
-    return false;
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
   return (
     "task_number" in value &&
     "content" in value &&
@@ -37,21 +38,9 @@ interface WritingClientViewProps {
   totalCount: number;
 }
 
-function Sparkle({
-  className = "",
-  color = "#8C82D9",
-}: {
-  className?: string;
-  color?: string;
-}) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <path
-        d="M12 1c.8 5.6 3.4 9.2 11 11-7.6 1.8-10.2 5.4-11 11-.8-5.6-3.4-9.2-11-11C8.6 10.2 11.2 6.6 12 1z"
-        fill={color}
-      />
-    </svg>
-  );
+// ... (Оставьте компоненты Sparkle и TaskText без изменений)
+function Sparkle({ className = "", color = "#8C82D9" }: { className?: string; color?: string; }) {
+  return <svg viewBox="0 0 24 24" className={className} aria-hidden="true"><path d="M12 1c.8 5.6 3.4 9.2 11 11-7.6 1.8-10.2 5.4-11 11-.8-5.6-3.4-9.2-11-11C8.6 10.2 11.2 6.6 12 1z" fill={color} /></svg>;
 }
 
 function TaskText({ text }: { text: string }) {
@@ -63,10 +52,7 @@ function TaskText({ text }: { text: string }) {
         if (!m) return <span key={i}>{part}</span>;
         const first = m[1] === "ㄱ";
         return (
-          <span
-            key={i}
-            className={`mx-1 inline-flex min-w-14 items-center justify-center rounded-lg border-2 border-dashed bg-white px-2 align-middle text-base font-extrabold ${first ? "border-[#8C82D9] text-[#7B73D1]" : "border-[#FF8A80] text-[#E5675C]"}`}
-          >
+          <span key={i} className={`mx-1 inline-flex min-w-14 items-center justify-center rounded-lg border-2 border-dashed bg-white px-2 align-middle text-base font-extrabold ${first ? "border-[#8C82D9] text-[#7B73D1]" : "border-[#FF8A80] text-[#E5675C]"}`}>
             {m[1]}
           </span>
         );
@@ -75,8 +61,7 @@ function TaskText({ text }: { text: string }) {
   );
 }
 
-const inputCls =
-  "w-full rounded-2xl border-2 border-transparent bg-[#F4F5FB] px-4 py-3 font-semibold text-[#2E2A4F] placeholder:text-[#2E2A4F]/35 transition-colors focus:border-[#8C82D9] focus:bg-white focus:outline-none disabled:opacity-70 disabled:bg-gray-100 disabled:cursor-not-allowed";
+const inputCls = "w-full rounded-2xl border-2 border-transparent bg-[#F4F5FB] px-4 py-3 font-semibold text-[#2E2A4F] placeholder:text-[#2E2A4F]/35 transition-colors focus:border-[#8C82D9] focus:bg-white focus:outline-none disabled:opacity-70 disabled:bg-gray-100 disabled:cursor-not-allowed";
 
 export default function WritingClientView({
   initialWriting,
@@ -95,25 +80,21 @@ export default function WritingClientView({
     return (
       <div className="mx-auto max-w-xl px-5 py-20 text-center">
         <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 space-y-4">
-          <h2 className="text-2xl font-extrabold text-[#2E2A4F]">
-            Поздравляем! 🎉
-          </h2>
-          <p className="text-gray-600">
-            Вы успешно решили все доступные задания по Writing.
-          </p>
+          <h2 className="text-2xl font-extrabold text-[#2E2A4F]">Поздравляем! 🎉</h2>
+          <p className="text-gray-600">Вы успешно решили все доступные задания по Writing.</p>
           <div className="text-sm text-purple-600 font-bold">
             Пройдено наборов: {completedCount} из {totalCount}
           </div>
+          <button onClick={() => { resetWritingProgress(); setLoading(false); }} className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+            Сбросить прогресс
+          </button>
         </div>
       </div>
     );
   }
 
   const content = initialWriting.content;
-  const taskList =
-    content !== null && typeof content === "object" && !Array.isArray(content)
-      ? content.topik_writing_tasks
-      : null;
+  const taskList = content !== null && typeof content === "object" && !Array.isArray(content) ? content.topik_writing_tasks : null;
   const tasks = Array.isArray(taskList) ? taskList.filter(isTopikTask) : [];
   const currentTaskData = tasks.find((t) => t.task_number === activeTask);
   const taskText = currentTaskData?.content || "Текст задания не найден.";
@@ -124,19 +105,26 @@ export default function WritingClientView({
     setAnswer1("");
     setAnswer2("");
     setIsAnswerRevealed(false);
+    setLoading(false)
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsAnswerRevealed(true); // Раскрываем ответы
+  // Эта функция теперь просто показывает ответы и блокирует инпуты
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsAnswerRevealed(true)
+    setLoading(false)
+  };
 
+  // А эта функция будет сохранять прогресс и переключать на следующий набор
+  const handleNextSet = async () => {
     setLoading(true);
     try {
       await completeTask(initialWriting.number, "Writing");
+      selectTask(51)
+      // После успешного выполнения сервер сам обновит страницу (revalidatePath)
     } catch (err) {
-      alert("Произошла ошибка при сохранении.");
-    } finally {
-      setLoading(false);
+      alert("Произошла ошибка при сохранении. Пожалуйста, попробуйте еще раз.");
+      setLoading(false); // Сбрасываем загрузку только при ошибке, при успехе страница обновится
     }
   };
 
@@ -146,29 +134,18 @@ export default function WritingClientView({
       <div className="mb-7 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.05),inset_0_3px_0_rgba(255,255,255,0.7)]">
-            <span lang="ko" className="text-2xl font-extrabold text-[#FFAB91]">
-              쓰
-            </span>
+            <span lang="ko" className="text-2xl font-extrabold text-[#FFAB91]">쓰</span>
           </div>
-          <h1 className="flex items-baseline text-3xl font-extrabold leading-tight">
-            Письмо
-          </h1>
+          <h1 className="flex items-baseline text-3xl font-extrabold leading-tight">Письмо</h1>
         </div>
         <div className="text-right">
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
-            Прогресс
-          </span>
-          <span className="text-sm font-extrabold text-purple-600">
-            {completedCount} / {totalCount} пройдено
-          </span>
+          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Прогресс</span>
+          <span className="text-sm font-extrabold text-purple-600">{completedCount} / {totalCount} пройдено</span>
         </div>
       </div>
 
       {/* Табы 51/52 */}
-      <div
-        role="tablist"
-        className="mb-6 grid grid-cols-2 gap-1.5 rounded-3xl bg-white p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.05)]"
-      >
+      <div role="tablist" className="mb-6 grid grid-cols-2 gap-1.5 rounded-3xl bg-white p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.05)]">
         {([51, 52] as const).map((n) => {
           const active = activeTask === n;
           return (
@@ -185,15 +162,10 @@ export default function WritingClientView({
       </div>
 
       <div className="relative overflow-hidden rounded-[28px] bg-white p-5 shadow-[0_12px_32px_rgba(140,130,217,0.14)] sm:p-8">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-[#8C82D9]/10"
-        />
+        <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-[#8C82D9]/10" />
 
         <div className="relative mb-6 flex flex-wrap items-center justify-between gap-3">
-          <span className="rounded-full bg-[#E7E4FA] px-3.5 py-1.5 text-sm font-extrabold text-[#7B73D1]">
-            10 баллов
-          </span>
+          <span className="rounded-full bg-[#E7E4FA] px-3.5 py-1.5 text-sm font-extrabold text-[#7B73D1]">10 баллов</span>
         </div>
 
         {/* Текст задания всегда остается сверху */}
@@ -201,19 +173,14 @@ export default function WritingClientView({
           <h2 className="mb-2.5 flex items-center gap-1 font-extrabold">
             Текст задания <Sparkle className="h-3.5 w-3.5" color="#FFAB91" />
           </h2>
-          <p
-            lang="ko"
-            className="rounded-2xl text-lg font-semibold leading-[2.2]"
-          >
+          <p lang="ko" className="rounded-2xl text-lg font-semibold leading-[2.2]">
             <TaskText text={taskText} />
           </p>
         </section>
 
         <form onSubmit={handleSubmit} className="space-y-6 relative">
           <section className="relative mb-8">
-            <h2 className="mb-3 font-extrabold">
-              Ваши ответы на {activeTask} задание
-            </h2>
+            <h2 className="mb-3 font-extrabold">Ваши ответы на {activeTask} задание</h2>
             <div className="space-y-5">
               {[
                 {
@@ -237,11 +204,7 @@ export default function WritingClientView({
               ].map((f) => (
                 <div key={f.id} className="flex flex-col gap-2">
                   <div className="flex items-center gap-3">
-                    <label
-                      htmlFor={f.id}
-                      lang="ko"
-                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-xl font-extrabold shadow-[inset_0_-3px_0_rgba(0,0,0,0.06)] ${f.tone}`}
-                    >
+                    <label htmlFor={f.id} lang="ko" className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-xl font-extrabold shadow-[inset_0_-3px_0_rgba(0,0,0,0.06)] ${f.tone}`}>
                       {f.label}
                     </label>
                     <input
@@ -256,29 +219,22 @@ export default function WritingClientView({
                       className={inputCls}
                     />
                   </div>
-
-                  {/* Блок правильных ответов появляется прямо под инпутом с отступом (ml-[60px] выравнивает под инпут, минуя иконку) */}
+                  <div>
+                    {/* Блок правильных ответов появляется прямо под инпутом с отступом (ml-[60px] выравнивает под инпут, минуя иконку) */}
+                  </div>
                   {isAnswerRevealed && (
-                    <div className="ml-[60px] rounded-2xl bg-[#F4F5FB] p-4 shadow-sm border border-gray-100 animate-in fade-in slide-in-from-top-2">
+                    <div className="w-full rounded-2xl bg-[#F4F5FB] p-4 shadow-sm border border-gray-100 animate-in fade-in slide-in-from-top-2">
                       <div className="mb-2 text-[11px] font-extrabold uppercase tracking-wider text-gray-400">
-                        Возможные ответы:
+                        Одни из вариантов ответа
                       </div>
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
-                          <span className="text-xs font-bold text-gray-400">
-                            Слова
-                          </span>
-                          <p className="font-semibold text-[#2E2A4F]">
-                            {f.dataWords?.join(", ")}
-                          </p>
+                          <span className="text-xs font-bold text-gray-400">Слова:</span>
+                          <p className="font-semibold text-[#2E2A4F]">{f.dataWords?.join(", ")}</p>
                         </div>
                         <div>
-                          <span className="text-xs font-bold text-gray-400">
-                            Грамматика
-                          </span>
-                          <p className="font-semibold text-[#2E2A4F]">
-                            {f.dataGrammars?.join(", ")}
-                          </p>
+                          <span className="text-xs font-bold text-gray-400">Грамматики:</span>
+                          <p className="font-semibold text-[#2E2A4F]">{f.dataGrammars?.join(", ")}</p>
                         </div>
                       </div>
                     </div>
@@ -290,9 +246,7 @@ export default function WritingClientView({
             {/* Общее объяснение задания появляется внизу */}
             {isAnswerRevealed && currentTaskData?.description && (
               <div className="mt-6 rounded-2xl bg-[#FFF9EB] p-5 border border-[#FFE082] animate-in fade-in slide-in-from-top-4">
-                <h4 className="mb-2 font-extrabold text-[#2E2A4F]">
-                  Объяснение
-                </h4>
+                <h4 className="mb-2 font-extrabold text-[#2E2A4F]">Объяснение</h4>
                 <p className="text-sm font-medium leading-relaxed text-gray-700">
                   {currentTaskData.description}
                 </p>
@@ -300,12 +254,36 @@ export default function WritingClientView({
             )}
           </section>
 
-          {/* Меняем кнопку на переход к следующему заданию после показа ответов */}
           {!isAnswerRevealed ? (
             <button
               type="submit"
-              disabled={loading || !answer1 || !answer2} // Лучше блокировать, если поля пустые
-              className="relative flex w-full items-center justify-center cursor-pointer rounded-2xl bg-[#FF8A80] py-3.5 font-extrabold text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:bg-[#FF9A91] disabled:opacity-50"
+              disabled={loading}
+              className="relative flex w-full items-center justify-center cursor-pointer rounded-2xl bg-[#FF8A80] py-3.5 font-extrabold text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:bg-[#FF9A91] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Показать ответ
+            </button>
+          ) : activeTask === 51 ? (
+            // Кнопка перехода к 52 заданию
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault(); // Защита от случайной отправки формы
+                selectTask(52);
+              }}
+              className="relative flex w-full items-center justify-center cursor-pointer rounded-2xl bg-[#8C82D9] py-3.5 font-extrabold text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:bg-[#9B93E0]"
+            >
+              Перейти к 52 заданию
+            </button>
+          ) : (
+            // Кнопка завершения набора и сохранения в БД
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                handleNextSet();
+              }}
+              disabled={loading}
+              className="relative flex w-full items-center justify-center cursor-pointer rounded-2xl bg-green-500 py-3.5 font-extrabold text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:bg-green-400 disabled:opacity-50"
             >
               {loading ? (
                 <div className="flex h-6 items-center gap-1.5">
@@ -314,19 +292,9 @@ export default function WritingClientView({
                   <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-white"></div>
                 </div>
               ) : (
-                "Показать ответ"
+                "Перейти к следующему заданию"
               )}
             </button>
-          ) : (
-            activeTask === 51 && (
-              <button
-                type="button"
-                onClick={() => selectTask(52)}
-                className="relative flex w-full items-center justify-center cursor-pointer rounded-2xl bg-[#8C82D9] py-3.5 font-extrabold text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:bg-[#9B93E0]"
-              >
-                Перейти к 52 заданию
-              </button>
-            )
           )}
         </form>
       </div>

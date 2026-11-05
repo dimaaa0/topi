@@ -1,8 +1,19 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { connection } from "next/server";
+import { Suspense } from "react";
 import WritingClientView from "../../components/WritingClientView";
 
-export default async function WritingPage() {
+export default function WritingPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Загрузка...</div>}>
+      <WritingContent />
+    </Suspense>
+  );
+}
+
+async function WritingContent() {
+  await connection();
   const session = await auth();
 
   // Если пользователь не авторизован, можно перенаправить или показать заглушку
@@ -14,7 +25,6 @@ export default async function WritingPage() {
     );
   }
 
-  // 1. Получаем данные пользователя (его текущий прогресс)
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { lastWritingNumber: true, completedWritingCount: true },
@@ -37,7 +47,7 @@ export default async function WritingPage() {
 
   return (
     <WritingClientView
-      initialWriting={nextWriting as any}
+      initialWriting={nextWriting}
       completedCount={user?.completedWritingCount || 0}
       totalCount={totalWritings}
     />
