@@ -227,7 +227,17 @@ export default function AuthPanel() {
           disabled={loading}
           className="mt-1 w-full cursor-pointer rounded-2xl bg-[#FF8A80] py-3.5 font-extrabold text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:bg-[#FF9A91] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? "Обработка..." : isLogin ? "Войти" : "Зарегистрироваться"}
+          {loading ? (
+            <div className="flex h-6 items-center gap-1.5">
+              <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-white [animation-delay:-0.2s]"></div>
+              <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-white [animation-delay:-0.1s]"></div>
+              <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-white"></div>
+            </div>
+          ) : isLogin ? (
+            "Войти"
+          ) : (
+            "Зарегистрироваться"
+          )}
         </button>
       </form>
 

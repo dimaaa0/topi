@@ -72,7 +72,15 @@ export default function AdminWritingPanel({
           disabled={loading}
           className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition font-medium disabled:opacity-50"
         >
-          {loading ? "Сохранение в базу..." : "Добавить запись"}
+          {loading ? (
+            <div className="flex h-6 items-center gap-1.5">
+              <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-white [animation-delay:-0.2s]"></div>
+              <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-white [animation-delay:-0.1s]"></div>
+              <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-white"></div>
+            </div>
+          ) : (
+            "Добавить запись"
+          )}
         </button>
       </form>
 
