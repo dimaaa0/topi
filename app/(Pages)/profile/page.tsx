@@ -154,10 +154,7 @@ const Profile = async () => {
                     </button>
                   </form>
                   {isAdmin && (
-                    <div className="border-t pt-6">
-                      <h2 className="text-xl font-bold mb-4 text-purple-600">
-                        ⚡ Панель администратора
-                      </h2>
+                    <div className=" pt-6">
                       <AdminWritingPanel initialWritings={writings} />
                     </div>
                   )}

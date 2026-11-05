@@ -254,14 +254,9 @@ export default function WritingClientView({
             )}
           </section>
 
-          {/* Меняем кнопку на переход к следующему заданию после показа ответов */}
-          {/* Меняем кнопку на переход к следующему заданию после показа ответов */}
-          {/* Условный рендеринг кнопок */}
           {!isAnswerRevealed ? (
-            // Кнопка для проверки ответов (работает и для 51, и для 52)
             <button
               type="submit"
-              // ВОТ ЗДЕСЬ ВОЗВРАЩАЕМ ПРОВЕРКУ НА ПУСТЫЕ ПОЛЯ
               disabled={loading}
               className="relative flex w-full items-center justify-center cursor-pointer rounded-2xl bg-[#FF8A80] py-3.5 font-extrabold text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:bg-[#FF9A91] disabled:opacity-50 disabled:cursor-not-allowed"
             >

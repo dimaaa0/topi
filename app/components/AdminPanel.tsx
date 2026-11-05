@@ -43,7 +43,7 @@ export default function AdminWritingPanel({
         className="bg-purple-50 p-6 rounded-xl border border-purple-200 shadow-sm space-y-4"
       >
         <h3 className="text-lg font-semibold text-purple-900">
-          Добавить новое задание Writing в Neon
+          Добавить новое задание
         </h3>
 
         {error && (
@@ -54,7 +54,7 @@ export default function AdminWritingPanel({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Контент (в формате JSON)
+            Контент
           </label>
           <textarea
             name="content"
@@ -85,18 +85,15 @@ export default function AdminWritingPanel({
           {writings.map((item) => (
             <div
               key={item.id}
-              className="p-4 border max-h-20 overflow-hidden rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-2"
+              className="py-4 px-2 border max-h-20 overflow-hidden rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center"
             >
-              <div>
-                <span className="font-bold text-purple-700">
-                  № {item.number}
-                </span>
-                <span className="text-gray-400 text-xs ml-2">
-                  ID: {item.id}
+              <div className="max-w-7 flex w-full items-center justify-center">
+                <span className="font-bold flex items-center text-purple-700">
+                  {item.number}
                 </span>
               </div>
-              <pre className="text-xs bg-gray-50 p-2 rounded max-w-full md:max-w-md overflow-x-auto text-gray-600">
-                {JSON.stringify(item.content, null, 2)}
+              <pre className="text-xs bg-gray-50 w-full p-2 rounded max-w-full md:max-w-md overflow-x-auto text-gray-600">
+                {item.content?.topik_writing_tasks?.[0]?.content.slice(0, 25) || "Текст не найден"}
               </pre>
             </div>
           ))}
