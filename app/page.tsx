@@ -242,7 +242,7 @@ export default async function Home() {
         className="pointer-events-none absolute -bottom-24 left-1/3 h-72 w-72 rounded-full bg-[#8C82D9]/10 blur-3xl"
       />
 
-      <div className="relative mx-auto flex min-h-dvh max-w-5xl flex-col px-5 pb-10 sm:px-8">
+      <div className="relative mx-auto flex min-h-dvh max-w-5xl flex-col px-5 pb-6 sm:px-8">
         {/* шапка */}
 
         {/* hero */}

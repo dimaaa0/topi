@@ -100,8 +100,10 @@ export default function AdminWritingPanel({
                   {item.number}
                 </span>
               </div>
-              <pre className="text-xs bg-gray-50 w-full p-2 rounded max-w-full md:max-w-md overflow-x-auto text-gray-600">
-                {item.content?.topik_writing_tasks?.[0]?.content.slice(0, 25) || "Текст не найден"}
+              <pre className="text-xs w-full p-2 rounded max-w-full md:max-w-md overflow-x-auto text-gray-600">
+                {item.content?.topik_writing_tasks?.[0]?.content
+                  .slice(0, 25)
+                  .replace(/\n/g, "") || "Текст не найден"}
               </pre>
             </div>
           ))}

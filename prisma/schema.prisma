@@ -70,3 +70,14 @@ model Writing {
 
   @@map("Writing")
 }
+
+model Listening {
+  id        String   @id @default(cuid())
+  number    Int      @default(autoincrement())
+  audioUrl  String   // Обязательно оставляем ссылку на файл в R2
+  content   Json     // Здесь будут лежать скрипт, массив вопросов, варианты ответов и playLimit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Listening")
+}
