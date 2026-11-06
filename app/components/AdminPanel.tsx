@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createWriting } from "../actions/createWriting"; // Импортируем наш Action
+import { createListeningTask } from '@/app/actions/createListening';
 
 export default function AdminWritingPanel({
   initialWritings,
@@ -11,12 +12,38 @@ export default function AdminWritingPanel({
   const [writings, setWritings] = useState(initialWritings);
   const [number, setNumber] = useState("");
   const [content, setContent] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [writingLoading, setWritingLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const [scriptText, setScriptText] = useState('');
+  const [listeningLoading, setListeningLoading] = useState(false);
+  const [createdPassage, setCreatedPassage] = useState<{
+    id: string;
+    audioUrl: string;
+  } | null>(null);
+
+  const handleListeningSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    if (!scriptText.trim()) return;
+
+    setListeningLoading(true);
+    setCreatedPassage(null);
+
+    try {
+      // Вызываем наш Server Action
+      const passage = await createListeningTask(scriptText);
+      setCreatedPassage(passage);
+    } catch (error) {
+      console.error('Ошибка при создании:', error);
+      alert('Не удалось сгенерировать аудио.');
+    } finally {
+      setListeningLoading(false);
+    }
+  };
+
+  const handleWritingSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setWritingLoading(true);
     setError("");
 
     try {
@@ -31,7 +58,7 @@ export default function AdminWritingPanel({
     } catch (err: any) {
       setError(err.message || "Произошла ошибка при сохранении");
     } finally {
-      setLoading(false);
+      setWritingLoading(false);
     }
   };
 
@@ -39,7 +66,7 @@ export default function AdminWritingPanel({
     <div className="space-y-6">
       {/* Форма добавления нового задания Writing */}
       <form
-        onSubmit={handleSubmit}
+        onSubmit={handleWritingSubmit}
         className="bg-purple-50 p-6 rounded-xl border border-purple-200 shadow-sm space-y-4"
       >
         <h3 className="text-lg font-semibold text-purple-900">
@@ -69,10 +96,10 @@ export default function AdminWritingPanel({
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={writingLoading}
           className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition font-medium disabled:opacity-50"
         >
-          {loading ? (
+          {writingLoading ? (
             <div className="flex h-6 items-center gap-1.5">
               <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-white [animation-delay:-0.2s]"></div>
               <div className="h-2.5 w-2.5 animate-bounce rounded-full bg-white [animation-delay:-0.1s]"></div>
@@ -112,6 +139,44 @@ export default function AdminWritingPanel({
           )}
         </div>
       </div>
+      <main className="max-w-xl mx-auto p-6 space-y-6">
+        <h1 className="text-2xl font-bold">Тест генерации Listening (TOPIK)</h1>
+
+        <form onSubmit={handleListeningSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Корейский скрипт:
+            </label>
+            <textarea
+              value={scriptText}
+              onChange={(e) => setScriptText(e.target.value)}
+              rows={5}
+              placeholder="например: 여보세요. 지금 어디예요? 버스 정류장 앞이에요."
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 border-gray-300 text-black"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={listeningLoading || !scriptText.trim()}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg disabled:opacity-50 transition"
+          >
+            {listeningLoading ? 'Озвучка -> R2 -> База данных...' : 'Сгенерировать и сохранить'}
+          </button>
+        </form>
+
+        {createdPassage && (
+          <div className="p-4 border rounded-lg bg-green-50 border-green-200 space-y-3">
+            <h2 className="font-semibold text-green-900">Успешно создано!</h2>
+            <p className="text-xs text-gray-600 break-all">
+              <strong>Ссылка на R2:</strong> {createdPassage.audioUrl}
+            </p>
+
+            {/* Плеер для мгновенной проверки звука */}
+            <audio controls src={createdPassage.audioUrl} className="w-full mt-2" />
+          </div>
+        )}
+      </main>
     </div>
   );
 }
