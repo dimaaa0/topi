@@ -14,7 +14,6 @@ export async function createWriting(formData: FormData) {
 
   const contentStr = formData.get("content") as string;
 
-  // Проверяем валидность JSON перед сохранением в базу
   let contentJson;
   try {
     contentJson = JSON.parse(contentStr);
@@ -22,7 +21,6 @@ export async function createWriting(formData: FormData) {
     throw new Error("Ошибка: введён невалидный JSON");
   }
 
-  // Записываем данные в таблицу Writing в Neon (номер сгенерируется автоматически)
   await prisma.writing.create({
     data: {
       content: contentJson,

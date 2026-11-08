@@ -13,6 +13,9 @@ const nunito = Nunito({
 export const metadata: Metadata = {
   title: "Topi - подготовка к TOPIK II",
   description: "Тренируй чтение, аудирование и письмо для TOPIK II.",
+  icons: {
+    icon: "../public/mascot.png",
+  },
 };
 
 export default function RootLayout({
@@ -23,7 +26,7 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <body className={`${nunito.className} bg-[#F4F5FB] text-[#2E2A4F]`}>
-        <Navbar  />
+        <Navbar />
         <Suspense fallback={<div>Загрузка навигации...</div>}>
           {children}
         </Suspense>
