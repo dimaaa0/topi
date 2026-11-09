@@ -27,6 +27,5 @@ export async function createWriting(formData: FormData) {
     },
   });
 
-  // Обновляем страницу профиля, чтобы данные сразу появились в списке
   revalidatePath("/profile");
 }

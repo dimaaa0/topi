@@ -9,7 +9,10 @@ const s3Client = new S3Client({
   },
 });
 
-export async function uploadAudioToR2(audioBuffer: Buffer, filename: string): Promise<string> {
+export async function uploadAudioToR2(
+  audioBuffer: Buffer,
+  filename: string,
+): Promise<string> {
   const command = new PutObjectCommand({
     Bucket: process.env.R2_BUCKET_NAME,
     Key: filename,
@@ -20,5 +23,23 @@ export async function uploadAudioToR2(audioBuffer: Buffer, filename: string): Pr
   await s3Client.send(command);
 
   // Возвращаем прямую ссылку на файл для плеера
+  return `${process.env.R2_PUBLIC_URL}/${filename}`;
+}
+
+export async function uploadImageToR2(
+  buffer: Buffer,
+  filename: string,
+  mimeType: string,
+) {
+  const command = new PutObjectCommand({
+    Bucket: process.env.R2_BUCKET_NAME,
+    Key: filename,
+    Body: buffer,
+    ContentType: mimeType, // Важно! передаем imageFile.type (например, image/png)
+  });
+
+  await s3Client.send(command);
+
+  // Возвращаем URL или просто filename (зависит от твоей логики хранения)
   return `${process.env.R2_PUBLIC_URL}/${filename}`;
 }

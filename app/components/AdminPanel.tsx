@@ -1,46 +1,71 @@
 "use client";
 
-import { useState } from "react";
-import { createWriting } from "../actions/createWriting"; // Импортируем наш Action
-import { createListeningTask } from '@/app/actions/createListening';
+import { useState, useRef, useTransition } from "react";
+import { createWriting } from "../actions/createWriting";
+import { createListeningTask } from "@/app/actions/createListening";
+import imageCompression from 'browser-image-compression';
 
 export default function AdminWritingPanel({
   initialWritings,
 }: {
   initialWritings: any[];
 }) {
+  // === Стейты для Writing ===
   const [writings, setWritings] = useState(initialWritings);
   const [number, setNumber] = useState("");
   const [content, setContent] = useState("");
   const [writingLoading, setWritingLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [scriptText, setScriptText] = useState('');
+  // === Стейты для Listening ===
   const [listeningLoading, setListeningLoading] = useState(false);
   const [createdPassage, setCreatedPassage] = useState<{
     id: string;
     audioUrl: string;
   } | null>(null);
 
-  const handleListeningSubmit = async (e: React.FormEvent) => {
+  // === Обработчик для Listening (аудио + картинка + JSON) ===
+  const handleListeningSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!scriptText.trim()) return;
-
+    const form = e.currentTarget; 
     setListeningLoading(true);
     setCreatedPassage(null);
 
     try {
-      // Вызываем наш Server Action
-      const passage = await createListeningTask(scriptText);
-      setCreatedPassage(passage);
-    } catch (error) {
+      const formData = new FormData(form);
+      const imageFile = formData.get('image') as File | null;
+
+      // Если файл есть и он не пустой, сжимаем его
+      if (imageFile && imageFile.size > 0) {
+        const options = {
+          maxSizeMB: 0.3,          
+          maxWidthOrHeight: 1200, 
+          useWebWorker: true,
+          fileType: 'image/webp' 
+        };
+
+        // Сжимаем
+        const compressedFile = await imageCompression(imageFile, options);
+        
+        // Заменяем тяжелый оригинал на легкий файл в formData
+        formData.set('image', compressedFile, compressedFile.name.replace(/\.[^/.]+$/, ".webp"));
+      }
+      
+      // Отправляем УЖЕ СЖАТЫЙ файл на сервер
+      const passage = await createListeningTask(formData);
+      
+      setCreatedPassage(passage as any); 
+      form.reset(); 
+      alert('Задание Listening успешно создано!');
+    } catch (error: any) {
       console.error('Ошибка при создании:', error);
-      alert('Не удалось сгенерировать аудио.');
+      alert(error.message || 'Не удалось создать задание Listening.');
     } finally {
       setListeningLoading(false);
     }
   };
 
+  // === Обработчик для Writing ===
   const handleWritingSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setWritingLoading(true);
@@ -49,12 +74,11 @@ export default function AdminWritingPanel({
     try {
       const formData = new FormData(e.currentTarget);
 
-      // Вызываем серверный экшен
       await createWriting(formData);
 
-      // Очищаем форму после успешного добавления
       setNumber("");
       setContent("");
+      alert("Задание Writing успешно добавлено!");
     } catch (err: any) {
       setError(err.message || "Произошла ошибка при сохранении");
     } finally {
@@ -139,44 +163,55 @@ export default function AdminWritingPanel({
           )}
         </div>
       </div>
-      <main className="max-w-xl mx-auto p-6 space-y-6">
-        <h1 className="text-2xl font-bold">Тест генерации Listening (TOPIK)</h1>
-
-        <form onSubmit={handleListeningSubmit} className="space-y-4">
+      <div>
+        <h2 className="text-xl font-bold mb-4">Создать Listening</h2>
+        <form onSubmit={handleListeningSubmit} className="flex flex-col gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">
-              Корейский скрипт:
+              JSON Задания
             </label>
             <textarea
-              value={scriptText}
-              onChange={(e) => setScriptText(e.target.value)}
-              rows={5}
-              placeholder="например: 여보세요. 지금 어디예요? 버스 정류장 앞이에요."
-              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 border-gray-300 text-black"
+              name="json"
+              rows={8}
+              className="w-full border rounded p-2 text-black font-mono text-sm"
+              placeholder='{
+  "script": ["M...", "F..."], 
+  "question": "...", 
+  "answer": 3
+}'
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium">
+              Изображение (если нужно)
+            </label>
+            <input
+              type="file"
+              name="image"
+              accept="image/*"
+              className="w-full"
             />
           </div>
 
           <button
             type="submit"
-            disabled={listeningLoading || !scriptText.trim()}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg disabled:opacity-50 transition"
+            disabled={listeningLoading}
+            className="bg-green-600 text-white p-2 rounded disabled:opacity-50"
           >
-            {listeningLoading ? 'Озвучка -> R2 -> База данных...' : 'Сгенерировать и сохранить'}
+            {listeningLoading
+              ? "Генерация аудио и сохранение..."
+              : "Создать Listening"}
           </button>
+
+          {createdPassage && (
+            <div className="mt-4 p-4 bg-green-50 text-green-900 rounded">
+              Успешно! ID: {createdPassage.id}
+            </div>
+          )}
         </form>
-
-        {createdPassage && (
-          <div className="p-4 border rounded-lg bg-green-50 border-green-200 space-y-3">
-            <h2 className="font-semibold text-green-900">Успешно создано!</h2>
-            <p className="text-xs text-gray-600 break-all">
-              <strong>Ссылка на R2:</strong> {createdPassage.audioUrl}
-            </p>
-
-            {/* Плеер для мгновенной проверки звука */}
-            <audio controls src={createdPassage.audioUrl} className="w-full mt-2" />
-          </div>
-        )}
-      </main>
+      </div>
     </div>
   );
 }
