@@ -4,7 +4,6 @@ import type { Writing } from "@prisma/client";
 import { completeTask } from "../actions/completeTask";
 import { resetWritingProgress } from "../actions/resetProgress";
 
-
 type TopikTask = {
   task_number: number;
   content: string;
