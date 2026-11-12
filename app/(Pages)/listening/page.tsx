@@ -16,40 +16,31 @@ async function ListeningContent() {
   await connection();
   const session = await auth();
 
-  // Если пользователь не авторизован, можно перенаправить или показать заглушку
-  if (!session || !session.user?.id) {
-    return (
-      <div className="p-8 text-center font-bold">
-        Пожалуйста, войдите в систему.
-      </div>
-    );
+  if (!session?.user?.id) {
+    return <div className="p-8 text-center font-bold">Пожалуйста, войдите в систему.</div>;
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { lastWritingNumber: true, completedWritingCount: true },
+  const progress = await prisma.userProgress.findUnique({
+    where: { userId: session.user.id },
+    select: { questionNumber1: true },
   });
 
-  const lastNum = user?.lastWritingNumber || 0;
+  const lastNum = progress?.questionNumber1 ?? 0;
 
-  // 2. Ищем следующее задание, у которого номер БОЛЬШЕ последнего решенного (gt автоматически пропускает дырки)
-  const nextWriting = await prisma.writing.findFirst({
-    where: {
-      number: { gt: lastNum },
-    },
-    orderBy: {
-      number: "asc",
-    },
-  });
-
-  // 3. Узнаем общее количество заданий в базе для красивой статистики
-  const totalWritings = await prisma.writing.count();
+  const [nextListening, totalListenings, completedCount] = await Promise.all([
+    prisma.listening.findFirst({
+      where: { number: { gt: lastNum } },
+      orderBy: { number: "asc" },
+    }),
+    prisma.listening.count(),
+    prisma.listening.count({ where: { number: { lte: lastNum } } }),
+  ]);
 
   return (
     <ListeningClientView
-      initialWriting={nextWriting}
-      completedCount={user?.completedWritingCount || 0}
-      totalCount={totalWritings}
+      initialData={nextListening}
+      completedCount={completedCount}
+      totalCount={totalListenings}
     />
   );
 }

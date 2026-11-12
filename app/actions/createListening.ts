@@ -73,6 +73,7 @@ export async function createListeningTask(formData: FormData) {
       audioUrl: audioUrl,
       imageUrl: finalImageUrl, // <-- Теперь Prisma сохранит ссылку в отдельную колонку БД
       content: taskData as any,
+      questionNumber: taskData.question_number,
     },
   });
 

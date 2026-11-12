@@ -138,7 +138,7 @@ export default function AdminWritingPanel({
       {/* Список существующих заданий */}
       <div className="bg-white p-6 rounded-xl shadow border">
         <h3 className="text-lg font-semibold mb-4">
-          Существующие задания в базе
+          Writing:
         </h3>
         <div className="space-y-3 ">
           {writings.map((item) => (

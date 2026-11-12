@@ -24,6 +24,25 @@ model User {
     
     createdAt     DateTime  @default(now())
     updatedAt     DateTime  @updatedAt
+
+    progress      UserProgress?
+}
+
+model UserProgress {
+  userId          String @unique
+  user            User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  questionNumber1 Int    @default(0)
+  questionNumber2 Int    @default(0)
+  questionNumber3 Int    @default(0)
+  questionNumber4 Int    @default(0)
+  questionNumber5 Int    @default(0)
+  questionNumber6 Int    @default(0)
+  questionNumber7 Int    @default(0)
+  questionNumber8 Int    @default(0)
+  questionNumber9 Int    @default(0)
+  questionNumber10 Int   @default(0)
+
 }
 
 model Account {
@@ -76,6 +95,7 @@ model Listening {
   number    Int      @default(autoincrement())
   audioUrl  String   // Обязательно оставляем ссылку на файл в R2
   imageUrl  String?  // <-- Добавьте эту строку
+  questionNumber Int?
   content   Json     // Здесь будут лежать скрипт, массив вопросов, варианты ответов и playLimit
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
