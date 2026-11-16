@@ -11,7 +11,6 @@ export default function ListeningPage() {
     </Suspense>
   );
 }
-
 async function ListeningContent() {
   await connection();
   const session = await auth();
@@ -22,15 +21,15 @@ async function ListeningContent() {
 
   const progress = await prisma.userProgress.findUnique({
     where: { userId: session.user.id },
-    select: { questionNumber1: true },
   });
 
   const lastNum = progress?.questionNumber1 ?? 0;
 
-  const [nextListening, totalListenings, completedCount] = await Promise.all([
-    prisma.listening.findFirst({
+  // Загружаем ВСЕ задания, которые ещё не пройдены
+  const [nextListeningTasks, totalListenings, completedCount] = await Promise.all([
+    prisma.listening.findMany({
       where: { number: { gt: lastNum } },
-      orderBy: { number: "asc" },
+      orderBy: [{ questionNumber: "asc" }, { number: "asc" }],
     }),
     prisma.listening.count(),
     prisma.listening.count({ where: { number: { lte: lastNum } } }),
@@ -38,7 +37,7 @@ async function ListeningContent() {
 
   return (
     <ListeningClientView
-      initialData={nextListening}
+      initialData={nextListeningTasks}
       completedCount={completedCount}
       totalCount={totalListenings}
     />

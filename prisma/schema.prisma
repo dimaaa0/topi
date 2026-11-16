@@ -42,7 +42,6 @@ model UserProgress {
   questionNumber8 Int    @default(0)
   questionNumber9 Int    @default(0)
   questionNumber10 Int   @default(0)
-
 }
 
 model Account {
