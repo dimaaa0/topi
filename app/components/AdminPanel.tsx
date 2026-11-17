@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useTransition } from "react";
+import { useState, useEffect, useRef } from 'react';
 import { createWriting } from "../actions/createWriting";
 import { createListeningTask } from "@/app/actions/createListening";
 import imageCompression from 'browser-image-compression';
@@ -27,7 +27,7 @@ export default function AdminWritingPanel({
   // === Обработчик для Listening (аудио + картинка + JSON) ===
   const handleListeningSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const form = e.currentTarget; 
+    const form = e.currentTarget;
     setListeningLoading(true);
     setCreatedPassage(null);
 
@@ -38,24 +38,25 @@ export default function AdminWritingPanel({
       // Если файл есть и он не пустой, сжимаем его
       if (imageFile && imageFile.size > 0) {
         const options = {
-          maxSizeMB: 0.3,          
-          maxWidthOrHeight: 1200, 
+          maxSizeMB: 0.3,
+          maxWidthOrHeight: 1200,
           useWebWorker: true,
-          fileType: 'image/webp' 
+          fileType: 'image/webp'
         };
 
         // Сжимаем
         const compressedFile = await imageCompression(imageFile, options);
-        
+
         // Заменяем тяжелый оригинал на легкий файл в formData
         formData.set('image', compressedFile, compressedFile.name.replace(/\.[^/.]+$/, ".webp"));
       }
-      
+
       // Отправляем УЖЕ СЖАТЫЙ файл на сервер
       const passage = await createListeningTask(formData);
-      
-      setCreatedPassage(passage as any); 
-      form.reset(); 
+
+      setCreatedPassage(passage as any);
+      form.reset();
+      setPreview(null);
       alert('Задание Listening успешно создано!');
     } catch (error: any) {
       console.error('Ошибка при создании:', error);
@@ -83,6 +84,26 @@ export default function AdminWritingPanel({
       setError(err.message || "Произошла ошибка при сохранении");
     } finally {
       setWritingLoading(false);
+    }
+  };
+
+  const [preview, setPreview] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const objectUrl = URL.createObjectURL(file);
+      setPreview(objectUrl);
+    } else {
+      setPreview(null);
+    }
+  };
+
+  const handleRemove = () => {
+    setPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''; // сбрасываем сам input
     }
   };
 
@@ -184,15 +205,34 @@ export default function AdminWritingPanel({
           </div>
 
           <div>
-            <label className="block text-sm font-medium">
+            <label className="block text-sm font-medium mb-1">
               Изображение (если нужно)
             </label>
             <input
+              ref={fileInputRef}
               type="file"
               name="image"
               accept="image/*"
+              onChange={handleImageChange}
               className="w-full"
             />
+
+            {preview && (
+              <div className="mt-3 relative inline-block">
+                <img
+                  src={preview}
+                  alt="Предпросмотр"
+                  className="max-h-60 rounded-lg object-cover border"
+                />
+                <button
+                  type="button"
+                  onClick={handleRemove}
+                  className="mt-2 block text-xs text-red-600 hover:underline"
+                >
+                  Удалить изображение
+                </button>
+              </div>
+            )}
           </div>
 
           <button
