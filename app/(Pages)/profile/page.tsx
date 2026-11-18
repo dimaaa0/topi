@@ -4,6 +4,7 @@ import mascot from "@/public/mascot.png";
 import RegistrationForm from "../../components/RegistrationForm";
 import { Writing } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import  window  from "next/server";
 
 import AdminWritingPanel from "../../components/AdminPanel";
 
@@ -25,6 +26,8 @@ function Sparkle({
     </svg>
   );
 }
+
+
 
 const quickLinks = [
   { href: "/reading", label: "Чтение", ko: "읽기" },
