@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from "react";
 import { createWriting } from "../actions/createWriting";
 import { createListeningTask } from "@/app/actions/createListening";
-import imageCompression from 'browser-image-compression';
+import imageCompression from "browser-image-compression";
 
 export default function AdminWritingPanel({
   initialWritings,
@@ -33,7 +33,7 @@ export default function AdminWritingPanel({
 
     try {
       const formData = new FormData(form);
-      const imageFile = formData.get('image') as File | null;
+      const imageFile = formData.get("image") as File | null;
 
       // Если файл есть и он не пустой, сжимаем его
       if (imageFile && imageFile.size > 0) {
@@ -41,14 +41,18 @@ export default function AdminWritingPanel({
           maxSizeMB: 0.3,
           maxWidthOrHeight: 1200,
           useWebWorker: true,
-          fileType: 'image/webp'
+          fileType: "image/webp",
         };
 
         // Сжимаем
         const compressedFile = await imageCompression(imageFile, options);
 
         // Заменяем тяжелый оригинал на легкий файл в formData
-        formData.set('image', compressedFile, compressedFile.name.replace(/\.[^/.]+$/, ".webp"));
+        formData.set(
+          "image",
+          compressedFile,
+          compressedFile.name.replace(/\.[^/.]+$/, ".webp"),
+        );
       }
 
       // Отправляем УЖЕ СЖАТЫЙ файл на сервер
@@ -57,10 +61,10 @@ export default function AdminWritingPanel({
       setCreatedPassage(passage as any);
       form.reset();
       setPreview(null);
-      alert('Задание Listening успешно создано!');
+      alert("Задание Listening успешно создано!");
     } catch (error: any) {
-      console.error('Ошибка при создании:', error);
-      alert(error.message || 'Не удалось создать задание Listening.');
+      console.error("Ошибка при создании:", error);
+      alert(error.message || "Не удалось создать задание Listening.");
     } finally {
       setListeningLoading(false);
     }
@@ -87,8 +91,8 @@ export default function AdminWritingPanel({
     }
   };
 
-  const [preview, setPreview] = useState(null);
-  const fileInputRef = useRef(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -103,7 +107,7 @@ export default function AdminWritingPanel({
   const handleRemove = () => {
     setPreview(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = ''; // сбрасываем сам input
+      fileInputRef.current.value = ""; // сбрасываем сам input
     }
   };
 
@@ -158,9 +162,7 @@ export default function AdminWritingPanel({
 
       {/* Список существующих заданий */}
       <div className="bg-white p-6 rounded-xl shadow border">
-        <h3 className="text-lg font-semibold mb-4">
-          Writing:
-        </h3>
+        <h3 className="text-lg font-semibold mb-4">Writing:</h3>
         <div className="space-y-3 ">
           {writings.map((item) => (
             <div
