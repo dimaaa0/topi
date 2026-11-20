@@ -47,7 +47,8 @@ const inputCls =
 function getTargetQuestionNumber(examTask: number): number {
   if (examTask === 1 || examTask === 2) return 1; // 1 и 2 задания — одинаковый формат (тип 1)
   if (examTask === 3) return 2; // 3 задание — формат типа 2
-  if (examTask === 4 || examTask === 5 || examTask === 6 || examTask === 7 || examTask === 8) return 3; // 4 и 5 задания — одинаковый формат (тип 3)
+  if (examTask === 4 || examTask === 5 || examTask === 6 || examTask === 7 || examTask === 8) return 3;
+  if (examTask === 9 || examTask === 10 || examTask === 11 || examTask === 12) return 4;
   return examTask - 1; // 4 -> 3, 5 -> 4 и т.д.
 }
 
@@ -157,7 +158,7 @@ export default function ListeningClientView({
   const taskAudioUrl = currentTask?.audioUrl || undefined;
 
   // 1. Вверху файла или перед компонентом задаём базовый множитель
-  const BASE_AUDIO_RATE = 0.9;
+  const BASE_AUDIO_RATE = 0.75;
 
   // 2. В состоянии храним отображаемые проценты (100% по умолчанию)
   const [speedPercent, setSpeedPercent] = useState<number>(100);
@@ -223,15 +224,6 @@ export default function ListeningClientView({
     }
   }, [isHydrated, isRangeSelected, startRange, endRange, activeTask, sessionAnswers]);
 
-  // useEffect(() => {
-  //   const audio = audioRef.current;
-  //   if (!audio) return;
-
-  //   audio.playbackRate = playbackRate;
-  //   audio.preservesPitch = true;
-  // }, [playbackRate, taskAudioUrl]);
-
-  // 4. Обработчики событий
   const clearSavedSession = () => {
     try {
       localStorage.removeItem(STORAGE_KEY);
@@ -459,6 +451,8 @@ export default function ListeningClientView({
   }
 
   // 6. Подготовка данных для основного рендера
+
+
   const taskImage = currentTask?.imageUrl || null;
 
   const contentObj = currentTask?.content as any;
@@ -476,6 +470,30 @@ export default function ListeningClientView({
     (_, i) => startRange + i
   );
   const revealedInSession = Object.values(sessionAnswers).filter((a) => a.isRevealed).length;
+
+  const normalizedTaskAnswer = String(taskAnswer ?? "").trim();
+  const numericUserAnswer = Number(userAnswer);
+  const selectedOptionIndex =
+    Number.isInteger(numericUserAnswer) &&
+      numericUserAnswer >= 1 &&
+      numericUserAnswer <= taskOptions.length
+      ? numericUserAnswer - 1
+      : taskOptions.findIndex(
+        (option: string | number) => String(option).trim() === userAnswer.trim()
+      );
+  const selectedOptionText = String(taskOptions[selectedOptionIndex] ?? "").trim();
+  const correctOptionIndex = Number(normalizedTaskAnswer) - 1;
+
+  const isUserCorrect =
+    Boolean(userAnswer) &&
+    selectedOptionIndex >= 0 &&
+    (correctOptionIndex === selectedOptionIndex ||
+      normalizedTaskAnswer === selectedOptionText);
+
+  const displayCorrectAnswer =
+    isSentenceOptions && taskOptions[correctOptionIndex] != null
+      ? `${normalizedTaskAnswer}. ${taskOptions[correctOptionIndex]}`
+      : normalizedTaskAnswer || "Ответ не указан";
 
   return (
     <div className="mx-auto max-w-5xl px-5 pb-12 pt-6 sm:px-8">
@@ -609,12 +627,12 @@ export default function ListeningClientView({
                 }
               >
                 {taskOptions?.map((opt: string | number, idx: number) => {
-                  const optionValue = String(opt);
-                  const isSelected = userAnswer === optionValue;
+                  const optionNumber = String(idx + 1); // Всегда "1", "2", "3" или "4"
+                  const optionText = String(opt);
+                  const isSelected = selectedOptionIndex === idx;
                   const isCorrect =
-                    String(taskAnswer) === optionValue ||
-                    String(taskAnswer) === String(idx + 1);
-
+                    String(taskAnswer).trim() === optionNumber ||
+                    String(taskAnswer).trim() === optionText.trim();
                   if (isSentenceOptions) {
                     let cardStyle =
                       "border-gray-200 bg-white text-[#2E2A4F] hover:border-[#42A5F5] hover:bg-[#F8FAFC] hover:-translate-y-0.5";
@@ -639,14 +657,14 @@ export default function ListeningClientView({
 
                     return (
                       <label
-                        key={`${idx}-${optionValue}`}
+                        key={`${idx}-${optionNumber}`}
                         className={`group relative flex w-full cursor-pointer items-center gap-3.5 rounded-2xl border-2 p-4 text-left transition-all duration-200 focus-within:ring-4 focus-within:ring-[#42A5F5]/30 ${cardStyle} ${isAnswerRevealed ? "pointer-events-none" : ""
                           }`}
                       >
                         <input
                           type="radio"
                           name="answer"
-                          value={optionValue}
+                          value={optionNumber}
                           checked={isSelected}
                           disabled={isAnswerRevealed || !currentTask}
                           onChange={(e) => handleSelectOption(e.target.value)}
@@ -655,10 +673,10 @@ export default function ListeningClientView({
                         <span
                           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black transition-colors ${badgeStyle}`}
                         >
-                          {idx + 1}
+                          {optionNumber}
                         </span>
                         <span lang="ko" className="text-base font-bold leading-snug">
-                          {optionValue}
+                          {optionText}
                         </span>
                       </label>
                     );
@@ -666,7 +684,7 @@ export default function ListeningClientView({
 
                   return (
                     <label
-                      key={optionValue}
+                      key={optionNumber}
                       className={`relative flex h-14 w-14 sm:h-20 sm:w-20 cursor-pointer items-center justify-center rounded-full border-2 transition-all duration-200 focus-within:ring-4 focus-within:ring-[#42A5F5]/30 ${isSelected
                         ? "border-[#42A5F5] bg-[#42A5F5] text-white shadow-[0_8px_16px_rgba(66,165,245,0.4)] -translate-y-1"
                         : "border-gray-200 bg-white text-[#2E2A4F] hover:border-[#42A5F5] hover:text-[#42A5F5] hover:bg-[#F8FAFC] hover:-translate-y-1"
@@ -675,13 +693,13 @@ export default function ListeningClientView({
                       <input
                         type="radio"
                         name="answer"
-                        value={optionValue}
+                        value={optionNumber}
                         checked={isSelected}
                         disabled={isAnswerRevealed || !currentTask}
                         onChange={(e) => handleSelectOption(e.target.value)}
                         className="sr-only"
                       />
-                      <span className="text-2xl sm:text-3xl font-black">{optionValue}</span>
+                      <span className="text-2xl sm:text-3xl font-black">{optionText}</span>
                     </label>
                   );
                 })}
@@ -700,25 +718,6 @@ export default function ListeningClientView({
             {/* Блок правильного ответа и скрипта */}
             {isAnswerRevealed && (
               <div className="mt-6 space-y-4 animate-in fade-in slide-in-from-top-4">
-                {String(taskAnswer) == userAnswer ? (
-                  <div className="w-full rounded-2xl bg-[#E8F5E9] p-5 shadow-sm border border-[#C8E6C9]">
-                    <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-[#4CAF50]">
-                      Правильный ответ {taskAnswer} & {userAnswer}
-                    </div>
-                    <p className="font-extrabold text-[#2E2A4F] text-lg">
-                      {taskAnswer || "Ответ не указан"}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="w-full rounded-2xl bg-[#FFEBEE] p-5 shadow-sm border border-[#FFCDD2]">
-                    <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-[#E53935]">
-                      Неверно
-                    </div>
-                    <p className="font-extrabold text-[#2E2A4F] text-lg">
-                      Правильный ответ: {taskAnswer || "Ответ не указан"} --------- {taskAnswer} & {userAnswer}
-                    </p>
-                  </div>
-                )}
 
                 {taskScript && (
                   <div className="rounded-2xl bg-[#F4F5FB] p-4">

@@ -26,14 +26,16 @@ async function ListeningContent() {
       questionNumber1: true,
       questionNumber2: true,
       questionNumber3: true,
+      questionNumber4: true,
     },
   });
 
   const lastNum1 = progress?.questionNumber1 ?? 0;
   const lastNum2 = progress?.questionNumber2 ?? 0;
   const lastNum3 = progress?.questionNumber3 ?? 0;
+  const lastNum4 = progress?.questionNumber4 ?? 0;
 
-  const [q1Tasks, q2Tasks, q3Tasks, totalListenings, completedCount] = await Promise.all([
+  const [q1Tasks, q2Tasks, q3Tasks, q4Tasks, totalListenings, completedCount] = await Promise.all([
     // Получаем строго 2 непройденных задания с questionNumber: 1
     prisma.listening.findMany({
       where: {
@@ -60,8 +62,16 @@ async function ListeningContent() {
       orderBy: { number: "asc" },
       take: 5,
     }),
+    prisma.listening.findMany({
+      where: {
+        questionNumber: 4,
+        number: { gt: lastNum4 },
+      },
+      orderBy: { number: "asc" },
+      take: 4,
+    }),
     prisma.listening.count({
-      where: { questionNumber: { in: [1, 2, 3] } },
+      where: { questionNumber: { in: [1, 2, 3, 4] } },
     }),
     prisma.listening.count({
       where: {
@@ -69,14 +79,15 @@ async function ListeningContent() {
           { questionNumber: 1, number: { lte: lastNum1 } },
           { questionNumber: 2, number: { lte: lastNum2 } },
           { questionNumber: 3, number: { lte: lastNum3 } },
+          { questionNumber: 4, number: { lte: lastNum4 } },
         ],
       },
     }),
   ]);
 
-  const nextListeningTasks = [...q1Tasks, ...q2Tasks, ...q3Tasks];
+  const nextListeningTasks = [...q1Tasks, ...q2Tasks, ...q3Tasks, ...q4Tasks];
   console.log(nextListeningTasks);
-  
+
   return (
     <ListeningClientView
       initialData={nextListeningTasks}
