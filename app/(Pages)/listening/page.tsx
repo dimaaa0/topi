@@ -58,7 +58,7 @@ async function ListeningContent() {
         number: { gt: lastNum3 },
       },
       orderBy: { number: "asc" },
-      take: 4,
+      take: 5,
     }),
     prisma.listening.count({
       where: { questionNumber: { in: [1, 2, 3] } },
