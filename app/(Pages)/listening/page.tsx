@@ -27,6 +27,8 @@ async function ListeningContent() {
       questionNumber2: true,
       questionNumber3: true,
       questionNumber4: true,
+      questionNumber5: true,
+      questionNumber6: true,
     },
   });
 
@@ -34,8 +36,10 @@ async function ListeningContent() {
   const lastNum2 = progress?.questionNumber2 ?? 0;
   const lastNum3 = progress?.questionNumber3 ?? 0;
   const lastNum4 = progress?.questionNumber4 ?? 0;
+  const lastNum5 = progress?.questionNumber5 ?? 0;
+  const lastNum6 = progress?.questionNumber6 ?? 0;
 
-  const [q1Tasks, q2Tasks, q3Tasks, q4Tasks, totalListenings, completedCount] = await Promise.all([
+  const [q1Tasks, q2Tasks, q3Tasks, q4Tasks, q5Tasks, q6Tasks, totalListenings, completedCount] = await Promise.all([
     // Получаем строго 2 непройденных задания с questionNumber: 1
     prisma.listening.findMany({
       where: {
@@ -70,8 +74,24 @@ async function ListeningContent() {
       orderBy: { number: "asc" },
       take: 4,
     }),
+    prisma.listening.findMany({
+      where: {
+        questionNumber: 5,
+        number: { gt: lastNum5 },
+      },
+      orderBy: { number: "asc" },
+      take: 4,
+    }),
+    prisma.listening.findMany({
+      where: {
+        questionNumber: 6,
+        number: { gt: lastNum6 },
+      },
+      orderBy: { number: "asc" },
+      take: 4,
+    }),
     prisma.listening.count({
-      where: { questionNumber: { in: [1, 2, 3, 4] } },
+      where: { questionNumber: { in: [1, 2, 3, 4, 5, 6] } },
     }),
     prisma.listening.count({
       where: {
@@ -80,12 +100,21 @@ async function ListeningContent() {
           { questionNumber: 2, number: { lte: lastNum2 } },
           { questionNumber: 3, number: { lte: lastNum3 } },
           { questionNumber: 4, number: { lte: lastNum4 } },
+          { questionNumber: 5, number: { lte: lastNum5 } },
+          { questionNumber: 6, number: { lte: lastNum6 } },
         ],
       },
     }),
   ]);
 
-  const nextListeningTasks = [...q1Tasks, ...q2Tasks, ...q3Tasks, ...q4Tasks];
+  const nextListeningTasks =
+    [...q1Tasks,
+    ...q2Tasks,
+    ...q3Tasks,
+    ...q4Tasks,
+    ...q5Tasks,
+    ...q6Tasks
+  ];
   console.log(nextListeningTasks);
 
   return (

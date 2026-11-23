@@ -6,6 +6,7 @@ import type { Listening } from "@prisma/client";
 import { completeTask } from "../actions/completeTask";
 import { completeListeningTask } from "../actions/completeListening";
 import { resetListeningProgress } from "../actions/resetListeningProgress";
+import { TaskAudioPlayer } from "./TaskAudioPlayer";
 
 interface ListeningClientViewProps {
   initialData: Listening[];
@@ -49,6 +50,8 @@ function getTargetQuestionNumber(examTask: number): number {
   if (examTask === 3) return 2; // 3 задание — формат типа 2
   if (examTask === 4 || examTask === 5 || examTask === 6 || examTask === 7 || examTask === 8) return 3;
   if (examTask === 9 || examTask === 10 || examTask === 11 || examTask === 12) return 4;
+  if (examTask === 13 || examTask === 14 || examTask === 15 || examTask === 16) return 5;
+  if (examTask === 17 || examTask === 18 || examTask === 19 || examTask === 20) return 6;
   return examTask - 1; // 4 -> 3, 5 -> 4 и т.д.
 }
 
@@ -505,7 +508,8 @@ export default function ListeningClientView({
               듣
             </span>
           </div>
-          <h1 className="flex items-baseline text-3xl font-extrabold leading-tight">
+
+          <h1 className="flex sm:display hidden items-baseline text-3xl font-extrabold leading-tight">
             Аудирование
           </h1>
         </div>
@@ -567,43 +571,13 @@ export default function ListeningClientView({
             {taskQuestion}
           </p>
 
-          <div className="flex flex-col gap-2">
-            <audio
-              ref={audioRef}
-              key={taskAudioUrl ?? "no-audio"}
-              controls
-              className="w-full"
-              src={taskAudioUrl}
-            >
-              Ваш браузер не поддерживает элемент <code>audio</code>.
-            </audio>
-
-            <div className="flex items-center gap-3 rounded-2xl bg-[#F4F5FB] px-4 py-2.5">
-              <span className="text-xs font-extrabold uppercase tracking-wider text-[#2E2A4F]/60">
-                Скорость
-              </span>
-
-              <input
-                type="range"
-                min={60}
-                max={125}
-                step={5}
-                value={speedPercent}
-                onChange={(e) => setSpeedPercent(Number(e.target.value))}
-                aria-label="Скорость воспроизведения"
-                className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200 accent-[#42A5F5]"
-              />
-
-              <button
-                type="button"
-                onClick={() => setSpeedPercent(100)}
-                title="Вернуть стандартную скорость 100%"
-                className="min-w-[56px] cursor-pointer rounded-xl bg-[#E3F2FD] px-2.5 py-1 text-center text-xs font-extrabold tabular-nums text-[#1E88E5] transition-colors hover:bg-[#42A5F5] hover:text-white"
-              >
-                {speedPercent}%
-              </button>
-            </div>
-          </div>
+          <TaskAudioPlayer
+            key={taskAudioUrl ?? "no-audio"}
+            audioRef={audioRef}
+            src={taskAudioUrl}
+            speedPercent={speedPercent}
+            onSpeedChange={setSpeedPercent}
+          />
 
           {taskImage && (
             <Image
@@ -618,93 +592,111 @@ export default function ListeningClientView({
 
         <form onSubmit={handleSubmit} className="space-y-6 relative">
           <section className="relative mb-8">
-            <div className="flex gap-3 sm:gap-5">
-              <div
-                className={
-                  isSentenceOptions
-                    ? "flex flex-col gap-3"
-                    : "grid grid-cols-4 gap-3 sm:gap-5"
-                }
-              >
-                {taskOptions?.map((opt: string | number, idx: number) => {
-                  const optionNumber = String(idx + 1); // Всегда "1", "2", "3" или "4"
-                  const optionText = String(opt);
-                  const isSelected = selectedOptionIndex === idx;
-                  const isCorrect =
-                    String(taskAnswer).trim() === optionNumber ||
-                    String(taskAnswer).trim() === optionText.trim();
-                  if (isSentenceOptions) {
-                    let cardStyle =
-                      "border-gray-200 bg-white text-[#2E2A4F] hover:border-[#42A5F5] hover:bg-[#F8FAFC] hover:-translate-y-0.5";
-                    let badgeStyle =
-                      "bg-[#F4F5FB] text-[#2E2A4F] group-hover:bg-[#E3F2FD] group-hover:text-[#1E88E5]";
+  <div
+    className={
+      isSentenceOptions
+        ? "flex w-full flex-col gap-3"
+        : "grid w-full grid-cols-4 gap-2.5 sm:gap-5"
+    }
+  >
+    {taskOptions?.map((opt: string | number, idx: number) => {
+      const optionNumber = String(idx + 1);
+      const optionText = String(opt);
+      const isSelected = selectedOptionIndex === idx;
+      const isCorrect =
+        String(taskAnswer).trim() === optionNumber ||
+        String(taskAnswer).trim() === optionText.trim();
 
-                    if (isAnswerRevealed) {
-                      if (isCorrect) {
-                        cardStyle = "border-[#4CAF50] bg-[#E8F5E9] text-[#2E2A4F]";
-                        badgeStyle = "bg-[#4CAF50] text-white";
-                      } else if (isSelected) {
-                        cardStyle = "border-[#E53935] bg-[#FFEBEE] text-[#2E2A4F]";
-                        badgeStyle = "bg-[#E53935] text-white";
-                      } else {
-                        cardStyle = "border-gray-200 bg-white text-[#2E2A4F] opacity-60";
-                      }
-                    } else if (isSelected) {
-                      cardStyle =
-                        "border-[#42A5F5] bg-[#E3F2FD]/60 text-[#2E2A4F] shadow-[0_6px_16px_rgba(66,165,245,0.2)] -translate-y-0.5";
-                      badgeStyle = "bg-[#42A5F5] text-white";
-                    }
+      /* ---------- Sentence options ---------- */
+      if (isSentenceOptions) {
+        let cardStyle =
+          "border-gray-200 bg-white text-[#2E2A4F] sm:hover:border-[#42A5F5] sm:hover:bg-[#F8FAFC] sm:hover:-translate-y-0.5";
+        let badgeStyle = "bg-[#F4F5FB] text-[#2E2A4F]";
 
-                    return (
-                      <label
-                        key={`${idx}-${optionNumber}`}
-                        className={`group relative flex w-full cursor-pointer items-center gap-3.5 rounded-2xl border-2 p-4 text-left transition-all duration-200 focus-within:ring-4 focus-within:ring-[#42A5F5]/30 ${cardStyle} ${isAnswerRevealed ? "pointer-events-none" : ""
-                          }`}
-                      >
-                        <input
-                          type="radio"
-                          name="answer"
-                          value={optionNumber}
-                          checked={isSelected}
-                          disabled={isAnswerRevealed || !currentTask}
-                          onChange={(e) => handleSelectOption(e.target.value)}
-                          className="sr-only"
-                        />
-                        <span
-                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black transition-colors ${badgeStyle}`}
-                        >
-                          {optionNumber}
-                        </span>
-                        <span lang="ko" className="text-base font-bold leading-snug">
-                          {optionText}
-                        </span>
-                      </label>
-                    );
-                  }
+        if (isAnswerRevealed) {
+          if (isCorrect) {
+            cardStyle = "border-[#4CAF50] bg-[#E8F5E9] text-[#2E2A4F]";
+            badgeStyle = "bg-[#4CAF50] text-white";
+          } else if (isSelected) {
+            cardStyle = "border-[#E53935] bg-[#FFEBEE] text-[#2E2A4F]";
+            badgeStyle = "bg-[#E53935] text-white";
+          } else {
+            cardStyle = "border-gray-200 bg-white text-[#2E2A4F] opacity-60";
+          }
+        } else if (isSelected) {
+          cardStyle =
+            "border-[#42A5F5] bg-[#E3F2FD]/60 text-[#2E2A4F] shadow-[inset_0_-4px_0_rgba(66,165,245,0.18),0_6px_16px_rgba(66,165,245,0.2)]";
+          badgeStyle = "bg-[#42A5F5] text-white";
+        }
 
-                  return (
-                    <label
-                      key={optionNumber}
-                      className={`relative flex h-14 w-14 sm:h-20 sm:w-20 cursor-pointer items-center justify-center rounded-full border-2 transition-all duration-200 focus-within:ring-4 focus-within:ring-[#42A5F5]/30 ${isSelected
-                        ? "border-[#42A5F5] bg-[#42A5F5] text-white shadow-[0_8px_16px_rgba(66,165,245,0.4)] -translate-y-1"
-                        : "border-gray-200 bg-white text-[#2E2A4F] hover:border-[#42A5F5] hover:text-[#42A5F5] hover:bg-[#F8FAFC] hover:-translate-y-1"
-                        } ${isAnswerRevealed ? "pointer-events-none opacity-80" : ""}`}
-                    >
-                      <input
-                        type="radio"
-                        name="answer"
-                        value={optionNumber}
-                        checked={isSelected}
-                        disabled={isAnswerRevealed || !currentTask}
-                        onChange={(e) => handleSelectOption(e.target.value)}
-                        className="sr-only"
-                      />
-                      <span className="text-2xl sm:text-3xl font-black">{optionText}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
+        return (
+          <label
+            key={`${idx}-${optionNumber}`}
+            className={`group relative flex min-h-[60px] w-full cursor-pointer items-center gap-3 rounded-2xl border-2 px-3.5 py-3 text-left shadow-[inset_0_-4px_0_rgba(0,0,0,0.04)] transition-all duration-200 active:scale-[0.98] focus-within:ring-4 focus-within:ring-[#42A5F5]/30 sm:gap-3.5 sm:p-4 ${cardStyle} ${
+              isAnswerRevealed ? "pointer-events-none" : ""
+            }`}
+          >
+            <input
+              type="radio"
+              name="answer"
+              value={optionNumber}
+              checked={isSelected}
+              disabled={isAnswerRevealed || !currentTask}
+              onChange={(e) => handleSelectOption(e.target.value)}
+              className="sr-only"
+            />
+            <span
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-black transition-colors ${badgeStyle}`}
+            >
+              {optionNumber}
+            </span>
+            <span lang="ko" className="min-w-0 break-words text-base font-bold leading-snug">
+              {optionText}
+            </span>
+          </label>
+        );
+      }
+
+      /* ---------- Numeric options (1–4) ---------- */
+      let stateClasses =
+        "border-gray-200 bg-white text-[#2E2A4F] sm:hover:border-[#42A5F5] sm:hover:text-[#42A5F5] sm:hover:bg-[#F8FAFC] sm:hover:-translate-y-1";
+
+      if (isAnswerRevealed) {
+        if (isCorrect) {
+          stateClasses =
+            "border-emerald-500 bg-emerald-500 text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.12),0_8px_16px_rgba(16,185,129,0.35)]";
+        } else if (isSelected) {
+          stateClasses =
+            "border-rose-500 bg-rose-500 text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.12),0_8px_16px_rgba(244,63,94,0.35)]";
+        } else {
+          stateClasses = "border-gray-200 bg-white text-[#2E2A4F] opacity-50";
+        }
+      } else if (isSelected) {
+        stateClasses =
+          "border-[#42A5F5] bg-[#42A5F5] text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.12),0_8px_16px_rgba(66,165,245,0.35)]";
+      }
+
+      return (
+        <label
+          key={optionNumber}
+          className={`relative flex h-16 w-full cursor-pointer items-center justify-center rounded-2xl border-2 shadow-[inset_0_-4px_0_rgba(0,0,0,0.04)] transition-all duration-200 active:scale-95 focus-within:ring-4 focus-within:ring-[#42A5F5]/30 sm:h-20 ${stateClasses} ${
+            isAnswerRevealed ? "pointer-events-none" : ""
+          }`}
+        >
+          <input
+            type="radio"
+            name="answer"
+            value={optionNumber}
+            checked={isSelected}
+            disabled={isAnswerRevealed || !currentTask}
+            onChange={(e) => handleSelectOption(e.target.value)}
+            className="sr-only"
+          />
+          <span className="text-2xl font-black sm:text-3xl">{optionText}</span>
+        </label>
+      );
+    })}
+  </div>
 
             <button
               type="button"
