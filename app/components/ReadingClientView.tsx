@@ -9,8 +9,7 @@ import { ReadingRangePicker } from "./reading/ReadingRangePicker";
 import { ReadingNavigator } from "./reading/ReadingNavigator";
 import { ReadingPassage } from "./reading/ReadingPassage";
 import { ReadingOptions } from "./reading/ReadingOptions";
-import { ReadingExplanation } from "./reading/ReadingExplanation";
-
+  
 import {
   MIN_TASK,
   MAX_TASK,
@@ -169,12 +168,11 @@ export default function ReadingClientView({ initialData, completedCount, totalCo
     }
   };
 
-  // ---- ранние выходы ----
   if (!isHydrated) {
     return <div className="mx-auto max-w-5xl px-5 py-20 text-center text-gray-400">Загрузка...</div>;
   }
 
-  if (!isRangeSelected && initialData.length === 0) {
+  if (isRangeSelected && initialData.length === 0) {
     return (
       <div className="mx-auto max-w-xl px-5 py-20 text-center">
         <div className="space-y-4 rounded-3xl border border-gray-100 bg-white p-8 shadow-sm">
@@ -249,8 +247,7 @@ export default function ReadingClientView({ initialData, completedCount, totalCo
             <ReadingPassage
               question={content.question}
               passage={content.passage}
-              example={content.example}
-              imageUrl={currentTask.imageUrl}
+              imageUrl={currentTask?.imageUrl}
               alt={`Задание ${activeTask}`}
             />
 
@@ -265,7 +262,7 @@ export default function ReadingClientView({ initialData, completedCount, totalCo
                   onSelect={handleSelectOption}
                 />
 
-                {isAnswerRevealed && (
+                {/* {isAnswerRevealed && (
                   <>
                     <p className={`mt-5 text-sm font-extrabold ${isUserCorrect ? "text-[#2E7D32]" : "text-[#E53935]"}`}>
                       {isUserCorrect
@@ -274,7 +271,7 @@ export default function ReadingClientView({ initialData, completedCount, totalCo
                     </p>
                     <ReadingExplanation translation={content.translation} explanation={content.explanation} />
                   </>
-                )}
+                )} */}
 
                 <button
                   type="button"

@@ -91,7 +91,7 @@ export default function ReadingAdminPanel({
             try {
                 question = JSON.parse(json).question;
             } catch { }
-            setItems((prev) => [
+            setItems((prev = []) => [
                 { id: created.id, number: created.number, questionNumber: created.questionNumber, question },
                 ...prev,
             ]);
@@ -126,23 +126,23 @@ export default function ReadingAdminPanel({
                 {error && <div className="rounded-lg bg-red-100 p-3 text-sm text-red-700">{error}</div>}
                 {ok && <div className="rounded-lg bg-green-100 p-3 text-sm text-green-800">{ok}</div>}
 
-                <div>
+                {/* <div>
                     <label className="mb-1 block text-sm font-medium text-gray-700">Тип задания</label>
                     <select
                         value={type}
                         onChange={(e) => setType(Number(e.target.value))}
                         className="w-full rounded-lg border bg-white p-2 text-black"
                     >
-                        {READING_RANGES.map(([from, to, t]) => (
+                       {READING_RANGES.map(([from, to, t]) => (
                             <option key={t} value={t}>
                                 Тип {t} (задания {from === to ? from : `${from}–${to}`})
                             </option>
-                        ))}
+                        ))} 
                     </select>
-                </div>
+                </div> */}
 
                 <div>
-                    <div className="mb-1 flex items-center justify-between">
+                    {/* <div className="mb-1 flex items-center justify-between">
                         <label className="text-sm font-medium text-gray-700">JSON задания</label>
                         <button
                             type="button"
@@ -151,7 +151,7 @@ export default function ReadingAdminPanel({
                         >
                             Вставить шаблон
                         </button>
-                    </div>
+                    </div> */}
                     <textarea
                         value={json}
                         onChange={(e) => setJson(e.target.value)}
@@ -159,7 +159,6 @@ export default function ReadingAdminPanel({
                         required
                         spellCheck={false}
                         className="w-full rounded-lg border bg-white p-2 font-mono text-xs text-black"
-                        placeholder={TEMPLATE}
                     />
                     {jsonError && <p className="mt-1 text-xs font-semibold text-red-600">{jsonError}</p>}
                 </div>
