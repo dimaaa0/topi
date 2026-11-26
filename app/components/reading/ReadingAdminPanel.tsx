@@ -3,32 +3,25 @@
 import { useMemo, useRef, useState } from "react";
 import imageCompression from "browser-image-compression";
 import { createReadingTask, deleteReadingTask } from "@/app/actions/createReading";
-import { READING_RANGES } from "@/lib/reading";
 
 export type AdminReadingItem = {
     id: string;
     number: number;
     questionNumber: number | null;
-    question: string;
+    passage: string;
 };
 
-const TEMPLATE = `{
-  "question": "※ 다음을 읽고 알맞은 것을 고르십시오.",
-  "passage": ["...", "..."],
-  "example": "",
-  "options": ["...", "...", "...", "..."],
-  "answer": 1,
-  "translation": "",
-  "explanation": ""
-}`;
+type ParsedReadingItem = {
+    question_number: number;
+    passage: string | string[];
+};
 
 export default function ReadingAdminPanel({
     initialReadings,
 }: {
-    initialReadings: AdminReadingItem[];
+    initialReadings?: AdminReadingItem[];
 }) {
-    const [items, setItems] = useState(initialReadings);
-    const [type, setType] = useState<number>(1);
+    const [items, setItems] = useState(initialReadings ?? []);
     const [json, setJson] = useState("");
     const [preview, setPreview] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -36,20 +29,84 @@ export default function ReadingAdminPanel({
     const [ok, setOk] = useState("");
     const fileRef = useRef<HTMLInputElement>(null);
 
-    // Живая проверка JSON
-    const jsonError = useMemo(() => {
-        if (!json.trim()) return "";
+    // Живая проверка JSON и извлечение данных
+    const { jsonError, parsedData } = useMemo(() => {
+        if (!json.trim()) return { jsonError: "", parsedData: null };
+
         try {
-            const d = JSON.parse(json);
-            if (typeof d.question !== "string") return 'Нет поля "question"';
-            if (!Array.isArray(d.options) || d.options.length < 2 || d.options.length > 4)
-                return '"options": нужен массив из 2–4 элементов';
-            const a = Number(d.answer);
-            if (!Number.isInteger(a) || a < 1 || a > d.options.length)
-                return '"answer": номер правильного варианта (от 1)';
-            return "";
+            const raw = JSON.parse(json);
+            const items = Array.isArray(raw) ? raw : [raw];
+
+            if (items.length === 0) {
+                return { jsonError: "Массив заданий пуст", parsedData: null };
+            }
+
+            const validatedItems: ParsedReadingItem[] = [];
+
+            for (let i = 0; i < items.length; i++) {
+                const d = items[i];
+                const prefix = items.length > 1 ? `Задание #${i + 1}: ` : "";
+
+                if (!d || typeof d !== "object" || Array.isArray(d)) {
+                    return {
+                        jsonError: `${prefix}ожидался объект с данными вопроса`,
+                        parsedData: null,
+                    };
+                }
+
+                if (typeof d.question !== "string" || !d.question.trim()) {
+                    return {
+                        jsonError: `${prefix}нет поля "question"`,
+                        parsedData: null,
+                    };
+                }
+
+                const qNum = Number(d.question_number);
+                if (!Number.isInteger(qNum) || qNum < 1) {
+                    return {
+                        jsonError: `${prefix}"question_number": нужно целое число от 1`,
+                        parsedData: null,
+                    };
+                }
+
+                const passageText =
+                    Array.isArray(d.passage) && d.passage.every((line) => typeof line === "string")
+                        ? d.passage.join("\n")
+                        : d.passage;
+                if (typeof passageText !== "string" || !passageText.trim()) {
+                    return {
+                        jsonError: `${prefix}нет поля "passage"`,
+                        parsedData: null,
+                    };
+                }
+
+                if (!Array.isArray(d.options) || d.options.length < 2 || d.options.length > 4) {
+                    return {
+                        jsonError: `${prefix}"options": нужен массив из 2–4 элементов`,
+                        parsedData: null,
+                    };
+                }
+
+                const a = Number(d.answer);
+                if (!Number.isInteger(a) || a < 1 || a > d.options.length) {
+                    return {
+                        jsonError: `${prefix}"answer": номер правильного варианта (от 1)`,
+                        parsedData: null,
+                    };
+                }
+
+                validatedItems.push({
+                    question_number: qNum,
+                    passage: d.passage,
+                });
+            }
+
+            return {
+                jsonError: "",
+                parsedData: validatedItems,
+            };
         } catch {
-            return "Невалидный JSON";
+            return { jsonError: "Невалидный JSON", parsedData: null };
         }
     }, [json]);
 
@@ -65,7 +122,8 @@ export default function ReadingAdminPanel({
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (jsonError) return;
+        if (jsonError || !parsedData) return;
+
         setLoading(true);
         setError("");
         setOk("");
@@ -73,7 +131,6 @@ export default function ReadingAdminPanel({
         try {
             const fd = new FormData();
             fd.set("json", json);
-            fd.set("type", String(type));
 
             const file = fileRef.current?.files?.[0];
             if (file && file.size > 0) {
@@ -87,17 +144,21 @@ export default function ReadingAdminPanel({
             }
 
             const created = await createReadingTask(fd);
-            let question = "";
-            try {
-                question = JSON.parse(json).question;
-            } catch { }
+
             setItems((prev = []) => [
-                { id: created.id, number: created.number, questionNumber: created.questionNumber, question },
+                ...created.map((item, index) => ({
+                    id: item.id,
+                    number: item.number,
+                    questionNumber: item.questionNumber,
+                    passage: Array.isArray(parsedData[index].passage)
+                        ? parsedData[index].passage.join("\n")
+                        : parsedData[index].passage,
+                })),
                 ...prev,
             ]);
             setJson("");
             clearFile();
-            setOk(`Задание #${created.number} создано`);
+            setOk(`Создано заданий: ${created.length}`);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Не удалось создать задание");
         } finally {
@@ -121,40 +182,23 @@ export default function ReadingAdminPanel({
                 onSubmit={handleSubmit}
                 className="space-y-4 rounded-xl border border-indigo-200 bg-indigo-50 p-6 shadow-sm"
             >
-                <h3 className="text-lg font-semibold text-indigo-900">Создать Reading</h3>
+                <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-indigo-900">Создать Reading</h3>
+                    {parsedData && (
+                        <span className="rounded-md bg-indigo-200 px-2.5 py-1 text-xs font-semibold text-indigo-900">
+                            К загрузке: {parsedData.length}
+                        </span>
+                    )}
+                </div>
 
                 {error && <div className="rounded-lg bg-red-100 p-3 text-sm text-red-700">{error}</div>}
                 {ok && <div className="rounded-lg bg-green-100 p-3 text-sm text-green-800">{ok}</div>}
 
-                {/* <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Тип задания</label>
-                    <select
-                        value={type}
-                        onChange={(e) => setType(Number(e.target.value))}
-                        className="w-full rounded-lg border bg-white p-2 text-black"
-                    >
-                       {READING_RANGES.map(([from, to, t]) => (
-                            <option key={t} value={t}>
-                                Тип {t} (задания {from === to ? from : `${from}–${to}`})
-                            </option>
-                        ))} 
-                    </select>
-                </div> */}
-
                 <div>
-                    {/* <div className="mb-1 flex items-center justify-between">
-                        <label className="text-sm font-medium text-gray-700">JSON задания</label>
-                        <button
-                            type="button"
-                            onClick={() => setJson(TEMPLATE)}
-                            className="text-xs text-indigo-700 hover:underline"
-                        >
-                            Вставить шаблон
-                        </button>
-                    </div> */}
                     <textarea
                         value={json}
                         onChange={(e) => setJson(e.target.value)}
+                        placeholder={'[\n  {\n    "question": "...",\n    "question_number": 1,\n    "passage": ["..."],\n    "options": ["...", "..."],\n    "answer": 1\n  },\n  {\n    "question": "...",\n    "question_number": 1,\n    "passage": ["..."],\n    "options": ["...", "..."],\n    "answer": 2\n  }\n]'}
                         rows={10}
                         required
                         spellCheck={false}
@@ -165,7 +209,7 @@ export default function ReadingAdminPanel({
 
                 <div>
                     <label className="mb-1 block text-sm font-medium text-gray-700">
-                        Изображение (если нужно)
+                        Изображение (если нужно; применяется ко всем заданиям)
                     </label>
                     <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="w-full" />
                     {preview && (
@@ -188,7 +232,7 @@ export default function ReadingAdminPanel({
                     disabled={loading || !json.trim() || Boolean(jsonError)}
                     className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50"
                 >
-                    {loading ? "Сохранение..." : "Создать Reading"}
+                    {loading ? "Сохранение..." : `Создать заданий: ${parsedData?.length ?? 0}`}
                 </button>
             </form>
 
@@ -205,7 +249,7 @@ export default function ReadingAdminPanel({
                                 Тип {item.questionNumber ?? "?"}
                             </span>
                             <span lang="ko" className="min-w-0 flex-1 truncate text-gray-600">
-                                {item.question}
+                                {item.passage}
                             </span>
                             <button
                                 type="button"

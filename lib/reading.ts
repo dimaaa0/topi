@@ -8,7 +8,11 @@ export const READING_RANGES: ReadonlyArray<readonly [number, number, number]> = 
   [1, 2, 1],
   [3, 4, 2],
   [5, 8, 3],
-  [9, 12, 4],
+  [9, 9, 4],
+  [10, 10, 5],
+  [11, 12, 6],
+
+  
   [13, 15, 5],
   [16, 18, 6],
   [19, 20, 7],

@@ -5,7 +5,6 @@ import { auth } from "@/auth";
 import { uploadImageToR2 } from "@/lib/r2";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
-import { READING_TYPES } from "@/lib/reading";
 
 async function assertAdmin() {
   const session = await auth();
@@ -18,38 +17,63 @@ export async function createReadingTask(formData: FormData) {
   await assertAdmin();
 
   const raw = formData.get("json") as string | null;
-  const type = Number(formData.get("type"));
   const imageFile = formData.get("image") as File | null;
 
   if (!raw) throw new Error("Отсутствует JSON задания.");
-  if (!READING_TYPES.some((t) => t.type === type)) {
-    throw new Error("Выберите корректный тип задания.");
-  }
 
-  let data: Record<string, unknown>;
+  let parsed: unknown;
   try {
-    data = JSON.parse(raw);
+    parsed = JSON.parse(raw);
   } catch {
     throw new Error("Ошибка парсинга JSON. Проверьте кавычки и запятые.");
   }
 
-  if (typeof data.question !== "string" || !data.question.trim()) {
-    throw new Error('В JSON нужно поле "question" (строка).');
+  const entries = Array.isArray(parsed) ? parsed : [parsed];
+  if (entries.length === 0) {
+    throw new Error("Массив заданий пуст.");
   }
-  if (!Array.isArray(data.options) || data.options.length < 2 || data.options.length > 4) {
-    throw new Error('"options" должен быть массивом из 2–4 вариантов.');
-  }
-  const answer = Number(data.answer);
-  if (!Number.isInteger(answer) || answer < 1 || answer > data.options.length) {
-    throw new Error('"answer" должен быть номером правильного варианта (от 1).');
-  }
-  if (
-    data.passage !== undefined &&
-    typeof data.passage !== "string" &&
-    !(Array.isArray(data.passage) && data.passage.every((p) => typeof p === "string"))
-  ) {
-    throw new Error('"passage" должен быть строкой или массивом строк.');
-  }
+
+  const tasks = entries.map((entry, index) => {
+    const prefix = entries.length > 1 ? `Задание #${index + 1}: ` : "";
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new Error(`${prefix}ожидался объект с данными задания.`);
+    }
+
+    const data = entry as Record<string, unknown>;
+    if (typeof data.question !== "string" || !data.question.trim()) {
+      throw new Error(`${prefix}в JSON нужно поле "question" (строка).`);
+    }
+
+    const questionNumber = Number(data.question_number);
+    if (!Number.isInteger(questionNumber) || questionNumber < 1) {
+      throw new Error(`${prefix}"question_number" должен быть целым числом от 1.`);
+    }
+
+    const passageIsValid =
+      typeof data.passage === "string"
+        ? Boolean(data.passage.trim())
+        : Array.isArray(data.passage) &&
+          data.passage.length > 0 &&
+          data.passage.every((line) => typeof line === "string") &&
+          data.passage.some((line) => line.trim());
+    if (!passageIsValid) {
+      throw new Error(`${prefix}"passage" должен быть непустой строкой или массивом строк.`);
+    }
+
+    if (!Array.isArray(data.options) || data.options.length < 2 || data.options.length > 4) {
+      throw new Error(`${prefix}"options" должен быть массивом из 2–4 вариантов.`);
+    }
+
+    const answer = Number(data.answer);
+    if (!Number.isInteger(answer) || answer < 1 || answer > data.options.length) {
+      throw new Error(`${prefix}"answer" должен быть номером правильного варианта (от 1).`);
+    }
+
+    return {
+      questionNumber,
+      content: { ...data, answer, question_number: questionNumber },
+    };
+  });
 
   let imageUrl: string | null = null;
   if (imageFile && imageFile.size > 0) {
@@ -58,14 +82,18 @@ export async function createReadingTask(formData: FormData) {
     imageUrl = await uploadImageToR2(buffer, `topik-reading-${randomUUID()}.${ext}`, imageFile.type);
   }
 
-  const created = await prisma.reading.create({
-    data: {
-      questionNumber: type,
-      imageUrl,
-      content: { ...data, answer, question_number: type } as object,
-    },
-    select: { id: true, number: true, questionNumber: true },
-  });
+  const created = await prisma.$transaction(
+    tasks.map(({ questionNumber, content }) =>
+      prisma.reading.create({
+        data: {
+          questionNumber,
+          imageUrl,
+          content: content as object,
+        },
+        select: { id: true, number: true, questionNumber: true },
+      })
+    )
+  );
 
   revalidatePath("/profile");
   revalidatePath("/reading");

@@ -18,10 +18,10 @@ export function ReadingOptions({
   onSelect,
 }: Props) {
   // Короткие варианты (1-4 или слова) — сеткой, длинные предложения — списком
-  const isShort = options.every((o) => String(o).trim().length <= 4);
+  // const isShort = options.every((o) => String(o).trim().length <= 4);
 
   return (
-    <div className={isShort ? "grid w-full grid-cols-4 gap-2.5 sm:gap-5" : "flex w-full flex-col gap-3"}>
+    <div className={ "flex w-full flex-col gap-3"}>
       {options.map((opt, idx) => {
         const num = String(idx + 1);
         const isSelected = selectedIndex === idx;
@@ -49,7 +49,7 @@ export function ReadingOptions({
           <label
             key={`${idx}-${num}`}
             className={`group relative flex w-full cursor-pointer items-center gap-3 rounded-2xl border-2 shadow-[inset_0_-4px_0_rgba(0,0,0,0.04)] transition-all duration-200 focus-within:ring-4 focus-within:ring-[#8C82D9]/30 active:scale-[0.98] ${
-              isShort ? "h-16 justify-center sm:h-20" : "min-h-[60px] px-3.5 py-3 sm:p-4"
+              "min-h-[60px] px-3.5 py-3 sm:p-4"
             } ${card} ${revealed ? "pointer-events-none" : ""}`}
           >
             <input
@@ -61,11 +61,7 @@ export function ReadingOptions({
               onChange={(e) => onSelect(e.target.value)}
               className="sr-only"
             />
-            {isShort ? (
-              <span lang="ko" className="text-2xl font-black sm:text-3xl">
-                {String(opt)}
-              </span>
-            ) : (
+            {
               <>
                 <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-black transition-colors ${badge}`}>
                   {num}
@@ -74,7 +70,7 @@ export function ReadingOptions({
                   {String(opt)}
                 </span>
               </>
-            )}
+            }
           </label>
         );
       })}

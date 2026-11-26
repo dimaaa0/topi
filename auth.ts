@@ -1,10 +1,9 @@
-import NextAuth from "next-auth";
+import NextAuth, { DefaultSession, CredentialsSignin } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { DefaultSession } from "next-auth";
 
 declare module "next-auth" {
   interface User {
@@ -17,6 +16,12 @@ declare module "next-auth" {
     } & DefaultSession["user"];
   }
 }
+
+class GoogleAccountError extends CredentialsSignin {
+  code = "google_account";
+}
+
+
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -43,8 +48,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { email: credentials.email as string },
         });
 
-        if (!user || !user.password) {
-          return null;
+        if (!user) return null;
+
+        // Аккаунт создан через Google, пароля нет
+        if (!user.password) {
+          throw new GoogleAccountError();
         }
 
         const passwordsMatch = await bcrypt.compare(
@@ -52,14 +60,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           user.password,
         );
 
-        if (passwordsMatch) {
-          return user;
-        }
-
-        return null;
+        return passwordsMatch ? user : null;
       },
     }),
   ],
+
 
   // 👇 СЮДА ВСТАВЛЯЕТСЯ БЛОК CALLBACKS
   callbacks: {
@@ -79,5 +84,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return session;
     },
+
   },
+
 });
+
