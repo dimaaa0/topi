@@ -145,6 +145,7 @@ export default function FriendsPanel({ friendCode, incoming, friends }: Props) {
               </button>
             </div>
           ))}
+          
         </div>
       )}
     </section>

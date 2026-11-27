@@ -124,7 +124,7 @@ export default function Dashboard({ s }: { s: ProfileStats }) {
           </div>
           <div className="h-3 overflow-hidden rounded-full bg-[#ECEAF8]">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-[#8C82D9] to-[#FF8A80]"
+              className="h-full rounded-full bg-[#5ae031a4]"
               style={{ width: `${pct}%` }}
             />
           </div>
