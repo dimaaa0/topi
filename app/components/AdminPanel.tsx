@@ -146,7 +146,7 @@ export default function AdminWritingPanel({
         <button
           type="submit"
           disabled={writingLoading}
-          className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition font-medium disabled:opacity-50"
+          className="bg-purple-600 flex justify-center  text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition font-medium disabled:opacity-50"
         >
           {writingLoading ? (
             <div className="flex h-6 items-center gap-1.5">

@@ -225,7 +225,7 @@ export default function AuthPanel() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-1 w-full cursor-pointer rounded-2xl bg-[#FF8A80] py-3.5 font-extrabold text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:bg-[#FF9A91] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-1 w-full flex justify-center cursor-pointer rounded-2xl bg-[#FF8A80] py-3.5 font-extrabold text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:bg-[#FF9A91] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? (
             <div className="flex h-6 items-center gap-1.5">
