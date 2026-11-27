@@ -28,8 +28,6 @@ function Sparkle({
   );
 }
 
-
-
 const quickLinks = [
   { href: "/reading", label: "Чтение", ko: "읽기" },
   { href: "/listening", label: "Аудирование", ko: "듣기" },

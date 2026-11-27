@@ -70,7 +70,7 @@ export default function ReadingAdminPanel({
                 }
 
                 const passageText =
-                    Array.isArray(d.passage) && d.passage.every((line) => typeof line === "string")
+                    Array.isArray(d.passage) && d.passage.every((line: string) => typeof line === "string")
                         ? d.passage.join("\n")
                         : d.passage;
                 if (typeof passageText !== "string" || !passageText.trim()) {
