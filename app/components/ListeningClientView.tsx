@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { Listening } from "@prisma/client";
 import { completeTask } from "../actions/completeTask";
 import { completeListeningTask } from "../actions/completeListening";
 import { resetListeningProgress } from "../actions/resetListeningProgress";
+import { TaskAudioPlayer } from "./TaskAudioPlayer";
 
 interface ListeningClientViewProps {
   initialData: Listening[];
@@ -47,6 +48,10 @@ const inputCls =
 function getTargetQuestionNumber(examTask: number): number {
   if (examTask === 1 || examTask === 2) return 1; // 1 и 2 задания — одинаковый формат (тип 1)
   if (examTask === 3) return 2; // 3 задание — формат типа 2
+  if (examTask === 4 || examTask === 5 || examTask === 6 || examTask === 7 || examTask === 8) return 3;
+  if (examTask === 9 || examTask === 10 || examTask === 11 || examTask === 12) return 4;
+  if (examTask === 13 || examTask === 14 || examTask === 15 || examTask === 16) return 5;
+  if (examTask === 17 || examTask === 18 || examTask === 19 || examTask === 20) return 6;
   return examTask - 1; // 4 -> 3, 5 -> 4 и т.д.
 }
 
@@ -73,11 +78,7 @@ function pickTask(
 ): TaskSnapshot | undefined {
   const type = getTargetQuestionNumber(slot);
   const matching = tasks.filter((t) => getTaskType(t) === type);
-  const used = new Set(
-    Object.values(answers)
-      .filter((a) => a.isRevealed)
-      .map((a) => a.task.id)
-  );
+  const used = new Set(Object.values(answers).map((a) => a.task.id));
   const task = matching.find((t) => !used.has(t.id)) ?? matching[0];
   return task ? toSnapshot(task) : undefined;
 }
@@ -137,6 +138,7 @@ export default function ListeningClientView({
   completedCount,
   totalCount,
 }: ListeningClientViewProps) {
+  // 1. Все хуки состояния, рефы и роутер — строго в самом верху
   const [isHydrated, setIsHydrated] = useState(false);
   const [isRangeSelected, setIsRangeSelected] = useState(false);
   const [taskType, setTaskType] = useState<"full" | "range" | null>(null);
@@ -147,17 +149,37 @@ export default function ListeningClientView({
   const [solvedCount, setSolvedCount] = useState(completedCount);
   const [sessionAnswers, setSessionAnswers] = useState<Record<number, SlotState>>({});
 
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const router = useRouter();
 
-  // Синхронизируем счётчик с сервером, когда приходят новые props
+  // 2. Базовые вычисляемые значения, нужные в эффектах и обработчиках
+  const currentSlot = sessionAnswers[activeTask];
+  const currentTask = currentSlot?.task;
+  const userAnswer = currentSlot?.userAnswer ?? "";
+  const isAnswerRevealed = currentSlot?.isRevealed ?? false;
+  const targetType = getTargetQuestionNumber(activeTask);
+  const taskAudioUrl = currentTask?.audioUrl || undefined;
+
+  // 1. Вверху файла или перед компонентом задаём базовый множитель
+  const BASE_AUDIO_RATE = 0.75;
+
+  // 2. В состоянии храним отображаемые проценты (100% по умолчанию)
+  const [speedPercent, setSpeedPercent] = useState<number>(100);
+
+  // 3. В useEffect пересчитываем проценты в реальный playbackRate (100% -> 0.9)
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.playbackRate = BASE_AUDIO_RATE * (speedPercent / 100);
+    audio.preservesPitch = true;
+  }, [speedPercent, taskAudioUrl]);
+
+  // 3. Все useEffect — строго до любых условных return
   useEffect(() => {
     setSolvedCount(completedCount);
   }, [completedCount]);
 
-  // 1. Восстанавливаем сессию ОДИН раз при загрузке страницы.
-  // Раньше эффект зависел от initialData и перезапускался при каждом revalidate
-  // после completeListeningTask — из-за этого вопрос "перескакивал" вперёд
-  // с уже открытым ответом.
   useEffect(() => {
     try {
       localStorage.removeItem(LEGACY_STORAGE_KEY);
@@ -184,7 +206,6 @@ export default function ListeningClientView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 2. Сохраняем сессию при любом изменении
   useEffect(() => {
     if (!isHydrated) return;
 
@@ -214,13 +235,6 @@ export default function ListeningClientView({
     setIsRangeSelected(false);
     setActiveTask(MIN_TASK);
   };
-
-  // Всё текущее состояние задания берём из sessionAnswers — никакого рассинхрона
-  const currentSlot = sessionAnswers[activeTask];
-  const currentTask = currentSlot?.task;
-  const userAnswer = currentSlot?.userAnswer ?? "";
-  const isAnswerRevealed = currentSlot?.isRevealed ?? false;
-  const targetType = getTargetQuestionNumber(activeTask);
 
   const updateSlot = (slot: number, patch: Partial<Omit<SlotState, "task">>) => {
     setSessionAnswers((prev) =>
@@ -269,7 +283,6 @@ export default function ListeningClientView({
   };
 
   const handleNextSet = async () => {
-    // Раньше брали initialData[0], который после revalidate мог быть пустым/другим
     const setNumber = currentTask?.number ?? initialData[0]?.number;
     if (setNumber == null) return;
 
@@ -287,13 +300,27 @@ export default function ListeningClientView({
     }
   };
 
-  // Пока не прочитан localStorage, не рендерим стартовый экран
+  const handleResetProgress = async () => {
+    setLoading(true);
+    try {
+      await resetListeningProgress();
+      clearSavedSession();
+      setSolvedCount(0);
+      router.refresh();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 5. Ранние выходы (только после всех хуков)
   if (!isHydrated) {
-    return <div className="mx-auto max-w-5xl px-5 py-20 text-center text-gray-400">Загрузка...</div>;
+    return (
+      <div className="mx-auto max-w-5xl px-5 py-20 text-center text-gray-400">
+        Загрузка...
+      </div>
+    );
   }
 
-  // Экран "всё решено" — только вне активной сессии, иначе при revalidate
-  // последнее задание пропадало бы с экрана сразу после проверки
   if (!isRangeSelected && (!initialData || initialData.length === 0)) {
     return (
       <div className="mx-auto max-w-xl px-5 py-20 text-center">
@@ -305,17 +332,7 @@ export default function ListeningClientView({
           </div>
           <button
             type="button"
-            onClick={async () => {
-              setLoading(true);
-              try {
-                await resetListeningProgress();
-                clearSavedSession();
-                setSolvedCount(0);
-                router.refresh();
-              } finally {
-                setLoading(false);
-              }
-            }}
+            onClick={handleResetProgress}
             disabled={loading}
             className="cursor-pointer bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
           >
@@ -326,7 +343,6 @@ export default function ListeningClientView({
     );
   }
 
-  // Экран выбора типа задания и диапазона
   if (!isRangeSelected) {
     const isRangeValid =
       Number.isInteger(startRange) &&
@@ -437,10 +453,13 @@ export default function ListeningClientView({
     );
   }
 
+  // 6. Подготовка данных для основного рендера
+
+
+  const taskImage = currentTask?.imageUrl || null;
+
   const contentObj = currentTask?.content as any;
-  const taskAudioUrl = currentTask?.audioUrl || null;
   const taskQuestion = contentObj?.question || "Текст задания не найден.";
-  const taskImage = currentTask?.imageUrl || contentObj?.imageId || null;
   const taskScript = contentObj?.script || null;
   const taskOptions = contentObj?.options || [1, 2, 3, 4];
   const taskAnswer = contentObj?.answer ?? null;
@@ -455,18 +474,49 @@ export default function ListeningClientView({
   );
   const revealedInSession = Object.values(sessionAnswers).filter((a) => a.isRevealed).length;
 
+  const normalizedTaskAnswer = String(taskAnswer ?? "").trim();
+  const numericUserAnswer = Number(userAnswer);
+  const selectedOptionIndex =
+    Number.isInteger(numericUserAnswer) &&
+      numericUserAnswer >= 1 &&
+      numericUserAnswer <= taskOptions.length
+      ? numericUserAnswer - 1
+      : taskOptions.findIndex(
+        (option: string | number) => String(option).trim() === userAnswer.trim()
+      );
+  const selectedOptionText = String(taskOptions[selectedOptionIndex] ?? "").trim();
+  const correctOptionIndex = Number(normalizedTaskAnswer) - 1;
+
+  const isUserCorrect =
+    Boolean(userAnswer) &&
+    selectedOptionIndex >= 0 &&
+    (correctOptionIndex === selectedOptionIndex ||
+      normalizedTaskAnswer === selectedOptionText);
+
+  const displayCorrectAnswer =
+    isSentenceOptions && taskOptions[correctOptionIndex] != null
+      ? `${normalizedTaskAnswer}. ${taskOptions[correctOptionIndex]}`
+      : normalizedTaskAnswer || "Ответ не указан";
+
   return (
     <div className="mx-auto max-w-5xl px-5 pb-12 pt-6 sm:px-8">
       {/* Шапка и Прогресс */}
       <div className="mb-7 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.05),inset_0_3px_0_rgba(255,255,255,0.7)]">
-            <span lang="ko" className="text-2xl font-extrabold text-[#42A5F5]">듣</span>
+            <span lang="ko" className="text-2xl font-extrabold text-[#42A5F5]">
+              듣
+            </span>
           </div>
-          <h1 className="flex items-baseline text-3xl font-extrabold leading-tight">Аудирование</h1>
+
+          <h1 className="flex sm:display hidden items-baseline text-3xl font-extrabold leading-tight">
+            Аудирование
+          </h1>
         </div>
         <div className="text-right">
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Прогресс</span>
+          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
+            Прогресс
+          </span>
           <span className="text-sm font-extrabold text-[#42A5F5]">
             {revealedInSession} / {rangeArray.length} решено
           </span>
@@ -504,7 +554,10 @@ export default function ListeningClientView({
       </div>
 
       <div className="relative overflow-hidden rounded-[28px] bg-white p-5 shadow-[0_12px_32px_rgba(66,165,245,0.14)] sm:p-8">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-[#42A5F5]/10" />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-[#42A5F5]/10"
+        />
 
         <div className="relative mb-6 flex flex-wrap items-center justify-between gap-3">
           <span className="rounded-full bg-[#E3F2FD] px-3.5 py-1.5 text-sm font-extrabold text-[#1E88E5]">
@@ -518,13 +571,13 @@ export default function ListeningClientView({
             {taskQuestion}
           </p>
 
-          {taskAudioUrl ? (
-            <audio key={taskAudioUrl} controls className="w-full" src={taskAudioUrl}>
-              Ваш браузер не поддерживает элемент <code>audio</code>.
-            </audio>
-          ) : (
-            <p className="text-sm text-gray-400">Аудио для этого задания отсутствует</p>
-          )}
+          <TaskAudioPlayer
+            key={taskAudioUrl ?? "no-audio"}
+            audioRef={audioRef}
+            src={taskAudioUrl}
+            speedPercent={speedPercent}
+            onSpeedChange={setSpeedPercent}
+          />
 
           {taskImage && (
             <Image
@@ -539,103 +592,117 @@ export default function ListeningClientView({
 
         <form onSubmit={handleSubmit} className="space-y-6 relative">
           <section className="relative mb-8">
-            <div className="flex gap-3 sm:gap-5">
+  <div
+    className={
+      isSentenceOptions
+        ? "flex w-full flex-col gap-3"
+        : "grid w-full grid-cols-4 gap-2.5 sm:gap-5"
+    }
+  >
+    {taskOptions?.map((opt: string | number, idx: number) => {
+      const optionNumber = String(idx + 1);
+      const optionText = String(opt);
+      const isSelected = selectedOptionIndex === idx;
+      const isCorrect =
+        String(taskAnswer).trim() === optionNumber ||
+        String(taskAnswer).trim() === optionText.trim();
 
-              <div className={isSentenceOptions ? "flex flex-col gap-3" : "grid grid-cols-4 gap-3 sm:gap-5"}>
-                {taskOptions?.map((opt: string | number, idx: number) => {
-                  const optionValue = String(opt);
-                  const isSelected = userAnswer === optionValue;
-                  const isCorrect =
-                    String(taskAnswer) === optionValue || String(taskAnswer) === String(idx + 1);
+      /* ---------- Sentence options ---------- */
+      if (isSentenceOptions) {
+        let cardStyle =
+          "border-gray-200 bg-white text-[#2E2A4F] sm:hover:border-[#42A5F5] sm:hover:bg-[#F8FAFC] sm:hover:-translate-y-0.5";
+        let badgeStyle = "bg-[#F4F5FB] text-[#2E2A4F]";
 
-                  if (isSentenceOptions) {
-                    let cardStyle =
-                      "border-gray-200 bg-white text-[#2E2A4F] hover:border-[#42A5F5] hover:bg-[#F8FAFC] hover:-translate-y-0.5";
-                    let badgeStyle =
-                      "bg-[#F4F5FB] text-[#2E2A4F] group-hover:bg-[#E3F2FD] group-hover:text-[#1E88E5]";
+        if (isAnswerRevealed) {
+          if (isCorrect) {
+            cardStyle = "border-[#4CAF50] bg-[#E8F5E9] text-[#2E2A4F]";
+            badgeStyle = "bg-[#4CAF50] text-white";
+          } else if (isSelected) {
+            cardStyle = "border-[#E53935] bg-[#FFEBEE] text-[#2E2A4F]";
+            badgeStyle = "bg-[#E53935] text-white";
+          } else {
+            cardStyle = "border-gray-200 bg-white text-[#2E2A4F] opacity-60";
+          }
+        } else if (isSelected) {
+          cardStyle =
+            "border-[#42A5F5] bg-[#E3F2FD]/60 text-[#2E2A4F] shadow-[inset_0_-4px_0_rgba(66,165,245,0.18),0_6px_16px_rgba(66,165,245,0.2)]";
+          badgeStyle = "bg-[#42A5F5] text-white";
+        }
 
-                    if (isAnswerRevealed) {
-                      if (isCorrect) {
-                        cardStyle = "border-[#4CAF50] bg-[#E8F5E9] text-[#2E2A4F]";
-                        badgeStyle = "bg-[#4CAF50] text-white";
-                      } else if (isSelected) {
-                        cardStyle = "border-[#E53935] bg-[#FFEBEE] text-[#2E2A4F]";
-                        badgeStyle = "bg-[#E53935] text-white";
-                      } else {
-                        cardStyle = "border-gray-200 bg-white text-[#2E2A4F] opacity-60";
-                      }
-                    } else if (isSelected) {
-                      cardStyle =
-                        "border-[#42A5F5] bg-[#E3F2FD]/60 text-[#2E2A4F] shadow-[0_6px_16px_rgba(66,165,245,0.2)] -translate-y-0.5";
-                      badgeStyle = "bg-[#42A5F5] text-white";
-                    }
+        return (
+          <label
+            key={`${idx}-${optionNumber}`}
+            className={`group relative flex min-h-[60px] w-full cursor-pointer items-center gap-3 rounded-2xl border-2 px-3.5 py-3 text-left shadow-[inset_0_-4px_0_rgba(0,0,0,0.04)] transition-all duration-200 active:scale-[0.98] focus-within:ring-4 focus-within:ring-[#42A5F5]/30 sm:gap-3.5 sm:p-4 ${cardStyle} ${
+              isAnswerRevealed ? "pointer-events-none" : ""
+            }`}
+          >
+            <input
+              type="radio"
+              name="answer"
+              value={optionNumber}
+              checked={isSelected}
+              disabled={isAnswerRevealed || !currentTask}
+              onChange={(e) => handleSelectOption(e.target.value)}
+              className="sr-only"
+            />
+            <span
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-black transition-colors ${badgeStyle}`}
+            >
+              {optionNumber}
+            </span>
+            <span lang="ko" className="min-w-0 break-words text-base font-bold leading-snug">
+              {optionText}
+            </span>
+          </label>
+        );
+      }
 
-                    return (
-                      <label
-                        key={`${idx}-${optionValue}`}
-                        className={`group relative flex w-full cursor-pointer items-center gap-3.5 rounded-2xl border-2 p-4 text-left transition-all duration-200 focus-within:ring-4 focus-within:ring-[#42A5F5]/30 ${cardStyle} ${isAnswerRevealed ? "pointer-events-none" : ""
-                          }`}
-                      >
-                        <input
-                          type="radio"
-                          name="answer"
-                          value={optionValue}
-                          checked={isSelected}
-                          disabled={isAnswerRevealed || !currentTask}
-                          onChange={(e) => handleSelectOption(e.target.value)}
-                          className="sr-only"
-                        />
-                        <span
-                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black transition-colors ${badgeStyle}`}
-                        >
-                          {idx + 1}
-                        </span>
-                        <span lang="ko" className="text-base font-bold leading-snug">
-                          {optionValue}
-                        </span>
-                      </label>
-                    );
-                  }
+      /* ---------- Numeric options (1–4) ---------- */
+      let stateClasses =
+        "border-gray-200 bg-white text-[#2E2A4F] sm:hover:border-[#42A5F5] sm:hover:text-[#42A5F5] sm:hover:bg-[#F8FAFC] sm:hover:-translate-y-1";
 
-                  return (
-                    <label
-                      key={optionValue}
-                      className={`relative flex h-14 w-14 sm:h-20 sm:w-20 cursor-pointer items-center justify-center rounded-full border-2 transition-all duration-200 focus-within:ring-4 focus-within:ring-[#42A5F5]/30 ${isSelected
-                          ? "border-[#42A5F5] bg-[#42A5F5] text-white shadow-[0_8px_16px_rgba(66,165,245,0.4)] -translate-y-1"
-                          : "border-gray-200 bg-white text-[#2E2A4F] hover:border-[#42A5F5] hover:text-[#42A5F5] hover:bg-[#F8FAFC] hover:-translate-y-1"
-                        } ${isAnswerRevealed ? "pointer-events-none opacity-80" : ""}`}
-                    >
-                      <input
-                        type="radio"
-                        name="answer"
-                        value={optionValue}
-                        checked={isSelected}
-                        disabled={isAnswerRevealed || !currentTask}
-                        onChange={(e) => handleSelectOption(e.target.value)}
-                        className="sr-only"
-                      />
-                      <span className="text-2xl sm:text-3xl font-black">{optionValue}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
+      if (isAnswerRevealed) {
+        if (isCorrect) {
+          stateClasses =
+            "border-emerald-500 bg-emerald-500 text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.12),0_8px_16px_rgba(16,185,129,0.35)]";
+        } else if (isSelected) {
+          stateClasses =
+            "border-rose-500 bg-rose-500 text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.12),0_8px_16px_rgba(244,63,94,0.35)]";
+        } else {
+          stateClasses = "border-gray-200 bg-white text-[#2E2A4F] opacity-50";
+        }
+      } else if (isSelected) {
+        stateClasses =
+          "border-[#42A5F5] bg-[#42A5F5] text-white shadow-[inset_0_-4px_0_rgba(0,0,0,0.12),0_8px_16px_rgba(66,165,245,0.35)]";
+      }
+
+      return (
+        <label
+          key={optionNumber}
+          className={`relative flex h-16 w-full cursor-pointer items-center justify-center rounded-2xl border-2 shadow-[inset_0_-4px_0_rgba(0,0,0,0.04)] transition-all duration-200 active:scale-95 focus-within:ring-4 focus-within:ring-[#42A5F5]/30 sm:h-20 ${stateClasses} ${
+            isAnswerRevealed ? "pointer-events-none" : ""
+          }`}
+        >
+          <input
+            type="radio"
+            name="answer"
+            value={optionNumber}
+            checked={isSelected}
+            disabled={isAnswerRevealed || !currentTask}
+            onChange={(e) => handleSelectOption(e.target.value)}
+            className="sr-only"
+          />
+          <span className="text-2xl font-black sm:text-3xl">{optionText}</span>
+        </label>
+      );
+    })}
+  </div>
 
             <button
               type="button"
-              onClick={async () => {
-                setLoading(true);
-                try {
-                  await resetListeningProgress();
-                  clearSavedSession();
-                  setSolvedCount(0);
-                  router.refresh();
-                } finally {
-                  setLoading(false);
-                }
-              }}
+              onClick={handleResetProgress}
               disabled={loading}
-              className="cursor-pointer bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
+              className="mt-4 cursor-pointer bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
             >
               Сбросить прогресс
             </button>
@@ -643,25 +710,6 @@ export default function ListeningClientView({
             {/* Блок правильного ответа и скрипта */}
             {isAnswerRevealed && (
               <div className="mt-6 space-y-4 animate-in fade-in slide-in-from-top-4">
-                {String(taskAnswer) === userAnswer ? (
-                  <div className="w-full rounded-2xl bg-[#E8F5E9] p-5 shadow-sm border border-[#C8E6C9]">
-                    <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-[#4CAF50]">
-                      Правильный ответ
-                    </div>
-                    <p className="font-extrabold text-[#2E2A4F] text-lg">
-                      {taskAnswer || "Ответ не указан"}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="w-full rounded-2xl bg-[#FFEBEE] p-5 shadow-sm border border-[#FFCDD2]">
-                    <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-[#E53935]">
-                      Неверно
-                    </div>
-                    <p className="font-extrabold text-[#2E2A4F] text-lg">
-                      Правильный ответ: {taskAnswer || "Ответ не указан"}
-                    </p>
-                  </div>
-                )}
 
                 {taskScript && (
                   <div className="rounded-2xl bg-[#F4F5FB] p-4">
@@ -669,7 +717,10 @@ export default function ListeningClientView({
                       Диалог:
                     </div>
                     {Array.isArray(taskScript) ? (
-                      <div lang="ko" className="space-y-1.5 text-sm leading-relaxed text-[#2E2A4F]">
+                      <div
+                        lang="ko"
+                        className="space-y-1.5 text-sm leading-relaxed text-[#2E2A4F]"
+                      >
                         {taskScript.map((line: string, idx: number) => (
                           <p key={idx}>{line}</p>
                         ))}

@@ -3,6 +3,8 @@ import { Nunito } from "next/font/google";
 import "./globals.css";
 import Navbar from "./components/Navbar";
 import { Suspense } from "react";
+import { SpeedInsights } from "@vercel/speed-insights/next"
+
 
 const nunito = Nunito({
   subsets: ["latin", "cyrillic"],
@@ -27,6 +29,7 @@ export default function RootLayout({
     <html lang="ru">
       <body className={`${nunito.className} bg-[#F4F5FB] text-[#2E2A4F]`}>
         <Navbar />
+        <SpeedInsights/>
         <Suspense fallback={<div>Загрузка навигации...</div>}>
           {children}
         </Suspense>

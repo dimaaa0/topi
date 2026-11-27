@@ -16,8 +16,13 @@ export async function registerUser(formData: FormData) {
   const existingUser = await prisma.user.findUnique({
     where: { email },
   });
-
+  
   if (existingUser) {
+    if (!existingUser.password) {
+      return {
+        error: "Этот аккаунт создан через Google. Войдите через Google.",
+      };
+    }
     return { error: "Пользователь с такой почтой уже существует" };
   }
 

@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { registerUser } from "@/app/actions/registerUser"; // Путь к вашему серверному действию регистрации
+
+
 
 function GoogleIcon() {
   return (
@@ -65,7 +68,13 @@ export default function AuthPanel() {
         });
 
         if (result?.error) {
-          setError("Неверный email или пароль");
+          if (result.code === "google_account") {
+            setError(
+              "Этот аккаунт создан через Google. Нажмите «Продолжить с Google», чтобы войти."
+            );
+          } else {
+            setError("Неверный email или пароль");
+          }
         } else {
           router.push("/profile");
           router.refresh();
@@ -77,25 +86,23 @@ export default function AuthPanel() {
         formData.append("email", email);
         formData.append("password", password);
 
-        const result = await registerUser(formData);
+        const result = await signIn("credentials", {
+          email,
+          password,
+          redirect: false,
+        });
 
         if (result?.error) {
-          setError(result.error);
-        } else {
-          // Автоматический вход после успешной регистрации
-          const loginResult = await signIn("credentials", {
-            email,
-            password,
-            redirect: false,
-          });
-
-          if (loginResult?.error) {
-            setSuccess("Регистрация успешна! Теперь вы можете войти.");
-            setIsLogin(true);
+          if (result.code === "google_account") {
+            setError(
+              "Этот аккаунт создан через Google. Войдите через Google."
+            );
           } else {
-            router.push("/profile");
-            router.refresh();
+            setError("Неверный email или пароль");
           }
+        } else {
+          router.push("/profile");
+          router.refresh();
         }
       }
     } catch (err) {
@@ -120,11 +127,10 @@ export default function AuthPanel() {
               type="button"
               aria-pressed={active}
               onClick={() => switchMode(t.login)}
-              className={`flex-1 cursor-pointer rounded-xl py-2.5 text-sm font-extrabold transition-all ${
-                active
-                  ? "bg-[#8C82D9] text-white shadow-[inset_0_-3px_0_rgba(0,0,0,0.1),0_4px_10px_rgba(140,130,217,0.3)]"
-                  : "text-[#2E2A4F]/55 hover:text-[#2E2A4F]"
-              }`}
+              className={`flex-1 cursor-pointer rounded-xl py-2.5 text-sm font-extrabold transition-all ${active
+                ? "bg-[#8C82D9] text-white shadow-[inset_0_-3px_0_rgba(0,0,0,0.1),0_4px_10px_rgba(140,130,217,0.3)]"
+                : "text-[#2E2A4F]/55 hover:text-[#2E2A4F]"
+                }`}
             >
               {t.label}
             </button>
@@ -145,7 +151,7 @@ export default function AuthPanel() {
       {error && (
         <div
           role="alert"
-          className="mt-5 rounded-2xl bg-[#FFE0DC] px-4 py-3 text-sm font-bold text-[#C94F44]"
+          className="mt-5 flex justify-center rounded-2xl bg-[#FFE0DC] px-4 py-3 text-sm font-bold text-[#C94F44]"
         >
           {error}
         </div>

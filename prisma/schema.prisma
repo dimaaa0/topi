@@ -9,80 +9,81 @@ generator client {
 
 // Таблицы, необходимые для работы Auth.js
 model User {
-    id            String    @id @default(cuid())
-    name          String?
-    email         String?   @unique
-    emailVerified DateTime?
-    image         String?
-    password      String?   // <-- Добавьте вот это поле, если его еще нет
-    accounts      Account[]
-    sessions      Session[] 
-    role          String    @default("USER")
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String? // <-- Добавьте вот это поле, если его еще нет
+  accounts      Account[]
+  sessions      Session[]
+  role          String    @default("USER")
 
-    lastWritingNumber     Int       @default(0)
-    completedWritingCount Int       @default(0)
-    
-    createdAt     DateTime  @default(now())
-    updatedAt     DateTime  @updatedAt
+  lastWritingNumber     Int @default(0)
+  completedWritingCount Int @default(0)
 
-    progress      UserProgress?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  progress        UserProgress?
+  ReadingProgress ReadingProgress?
 }
 
 model UserProgress {
-  userId          String @unique
-  user            User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  questionNumber1 Int    @default(0)
-  questionNumber2 Int    @default(0)
-  questionNumber3 Int    @default(0)
-  questionNumber4 Int    @default(0)
-  questionNumber5 Int    @default(0)
-  questionNumber6 Int    @default(0)
-  questionNumber7 Int    @default(0)
-  questionNumber8 Int    @default(0)
-  questionNumber9 Int    @default(0)
-  questionNumber10 Int   @default(0)
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  questionNumber1  Int @default(0)
+  questionNumber2  Int @default(0)
+  questionNumber3  Int @default(0)
+  questionNumber4  Int @default(0)
+  questionNumber5  Int @default(0)
+  questionNumber6  Int @default(0)
+  questionNumber7  Int @default(0)
+  questionNumber8  Int @default(0)
+  questionNumber9  Int @default(0)
+  questionNumber10 Int @default(0)
 }
 
 model Account {
-    id                       String  @id @default(cuid())
-    userId                   String
-    type                     String
-    provider                 String
-    providerAccountId        String
-    refresh_token            String? @db.Text
-    access_token             String? @db.Text
-    expires_at               Int?
-    token_type               String?
-    scope                    String?
-    id_token                 String? @db.Text
-    session_state            String?
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
 
-    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    @@unique([provider, providerAccountId])
+  @@unique([provider, providerAccountId])
 }
 
 model Session {
-    id           String   @id @default(cuid())
-    sessionToken String   @unique
-    userId       String
-    expires      DateTime
-    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
-    identifier String
-    token      String   @unique
-    expires     DateTime
+  identifier String
+  token      String   @unique
+  expires    DateTime
 
-    @@unique([identifier, token])
+  @@unique([identifier, token])
 }
 
 model Writing {
   id        String   @id @default(cuid())
   number    Int      @default(autoincrement())
-  content   Json     
+  content   Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -90,14 +91,32 @@ model Writing {
 }
 
 model Listening {
-  id        String   @id @default(cuid())
-  number    Int      @default(autoincrement())
-  audioUrl  String   // Обязательно оставляем ссылку на файл в R2
-  imageUrl  String?  // <-- Добавьте эту строку
+  id             String   @id @default(cuid())
+  number         Int      @default(autoincrement())
+  audioUrl       String // Обязательно оставляем ссылку на файл в R2
+  imageUrl       String? // <-- Добавьте эту строку
   questionNumber Int?
-  content   Json     // Здесь будут лежать скрипт, массив вопросов, варианты ответов и playLimit
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  content        Json // Здесь будут лежать скрипт, массив вопросов, варианты ответов и playLimit
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@map("Listening")
+}
+
+model Reading {
+  id             String   @id @default(cuid())
+  number         Int      @default(autoincrement())
+  imageUrl       String?
+  questionNumber Int?
+  content        Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("Reading")
+}
+
+model ReadingProgress {
+  userId   String @unique
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  progress Json   @default("{}")
 }
