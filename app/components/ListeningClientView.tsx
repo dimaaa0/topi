@@ -276,7 +276,7 @@ export default function ListeningClientView({
     setSolvedCount((prev) => Math.min(prev + 1, totalCount));
 
     try {
-      await completeListeningTask(currentTask.number, targetType);
+      await completeListeningTask(currentTask.number, targetType, userAnswer);
     } catch {
       console.error("Не удалось сохранить прогресс");
     }

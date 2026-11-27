@@ -4,7 +4,8 @@ import mascot from "@/public/mascot.png";
 import RegistrationForm from "../../components/RegistrationForm";
 import { Writing } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import  window  from "next/server";
+import { Suspense } from "react";
+import ProfileStats from "../../components/profile/ProfileStats";
 
 import AdminWritingPanel from "../../components/AdminPanel";
 
@@ -176,6 +177,18 @@ const Profile = async () => {
             </div>
           </div>
         </main>
+
+        {user && (
+          <Suspense
+            fallback={
+              <div className="mt-8 text-center font-semibold text-[#2E2A4F]/50">
+                Загрузка статистики...
+              </div>
+            }
+          >
+            <ProfileStats userId={user.id} />
+          </Suspense>
+        )}
       </div>
     </div>
   );
