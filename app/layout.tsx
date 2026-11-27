@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "./components/Navbar";
 import { Suspense } from "react";
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import DailyCheckIn from "./components/DailyCheckIn";
 
 
 const nunito = Nunito({
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body className={`${nunito.className} bg-[#F4F5FB] text-[#2E2A4F]`}>
         <Navbar />
         <SpeedInsights/>
+        <DailyCheckIn />
         <Suspense fallback={<div>Загрузка навигации...</div>}>
           {children}
         </Suspense>

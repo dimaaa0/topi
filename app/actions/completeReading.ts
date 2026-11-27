@@ -2,14 +2,27 @@
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { POINTS, recordActivity } from "@/lib/activity";
 import { revalidatePath } from "next/cache";
 
-export async function completeReadingTask(taskNumber: number, taskType: number) {
+export async function completeReadingTask(
+  taskNumber: number,
+  taskType: number,
+  userAnswer: string,
+) {
   const session = await auth();
-  if (!session?.user?.id) return;
+  if (!session?.user?.id) return { isCorrect: false };
+  const userId = session.user.id;
+
+  const task = await prisma.reading.findFirst({
+    where: { number: taskNumber },
+    select: { content: true },
+  });
+  const right = String((task?.content as { answer?: unknown } | null)?.answer ?? "").trim();
+  const isCorrect = right !== "" && right === String(userAnswer).trim();
 
   const row = await prisma.readingProgress.findUnique({
-    where: { userId: session.user.id },
+    where: { userId },
     select: { progress: true },
   });
 
@@ -18,10 +31,17 @@ export async function completeReadingTask(taskNumber: number, taskType: number) 
   const next = { ...current, [key]: Math.max(current[key] ?? 0, taskNumber) };
 
   await prisma.readingProgress.upsert({
-    where: { userId: session.user.id },
+    where: { userId },
     update: { progress: next },
-    create: { userId: session.user.id, progress: next },
+    create: { userId, progress: next },
+  });
+
+  await recordActivity(userId, "READING", {
+    correct: isCorrect,
+    points: isCorrect ? POINTS.READING_CORRECT : POINTS.READING_WRONG,
   });
 
   revalidatePath("/reading");
+  revalidatePath("/profile");
+  return { isCorrect };
 }

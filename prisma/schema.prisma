@@ -22,11 +22,22 @@ model User {
   lastWritingNumber     Int @default(0)
   completedWritingCount Int @default(0)
 
+  // Статистика, стрики и баллы
+  friendCode     String? @unique
+  points         Int     @default(0)
+  currentStreak  Int     @default(0)
+  longestStreak  Int     @default(0)
+  lastActiveDate String? // "YYYY-MM-DD" (Asia/Tashkent)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   progress        UserProgress?
   ReadingProgress ReadingProgress?
+
+  activity         ActivityLog[]
+  sentRequests     Friendship[]  @relation("Requester")
+  receivedRequests Friendship[]  @relation("Addressee")
 }
 
 model UserProgress {
@@ -119,4 +130,31 @@ model ReadingProgress {
   userId   String @unique
   user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   progress Json   @default("{}")
+}
+
+model ActivityLog {
+  id      String @id @default(cuid())
+  userId  String
+  date    String // "YYYY-MM-DD"
+  section String // LISTENING | READING | WRITING
+  count   Int    @default(0)
+  correct Int    @default(0)
+  points  Int    @default(0)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, section])
+  @@index([userId, date])
+}
+
+model Friendship {
+  id          String   @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      String   @default("PENDING") // PENDING | ACCEPTED
+  createdAt   DateTime @default(now())
+  requester   User     @relation("Requester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee   User     @relation("Addressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId])
 }

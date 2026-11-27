@@ -145,7 +145,7 @@ export default function ReadingClientView({ initialData, completedCount, totalCo
     setSolvedCount((prev) => Math.min(prev + 1, totalCount));
 
     try {
-      await completeReadingTask(currentTask.number, targetType);
+      await completeReadingTask(currentTask.number, targetType, userAnswer);
     } catch {
       console.error("Не удалось сохранить прогресс");
     }
