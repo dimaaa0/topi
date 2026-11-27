@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { createWriting } from "../actions/createWriting";
 import { createListeningTask } from "@/app/actions/createListening";
 import imageCompression from "browser-image-compression";
-import ReadingAdminPanel from "../components/reading/ReadingAdminPanel"
+import ReadingAdminPanel from "../components/reading/ReadingAdminPanel";
 export default function AdminWritingPanel({
   initialWritings,
 }: {
